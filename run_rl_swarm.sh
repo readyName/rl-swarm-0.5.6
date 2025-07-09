@@ -12,9 +12,7 @@ export IDENTITY_PATH
 export GENSYN_RESET_CONFIG
 export CONNECT_TO_TESTNET=true
 export ORG_ID
-export HF_HUB_DOWNLOAD_TIMEOUT=120  # 2 minutes
 export SWARM_CONTRACT="0xFaD7C5e93f28257429569B854151A1B8DCD404c2"
-export HUGGINGFACE_ACCESS_TOKEN="None"
 
 # Path to an RSA private key. If this path does not exist, a new key pair will be created.
 # Remove this file if you want a new PeerID.
@@ -68,7 +66,7 @@ cleanup() {
     echo_green ">> Shutting down trainer..."
 
     # Remove modal credentials if they exist
-    rm -r $ROOT_DIR/modal-login/temp-data/*.json 2> /dev/null || true
+    #rm -r $ROOT_DIR/modal-login/temp-data/*.json 2> /dev/null || true
 
     # Kill all processes belonging to this script's process group
     kill -- -$$ || true
@@ -127,7 +125,6 @@ if [ "$CONNECT_TO_TESTNET" = true ]; then
             sudo apt update && sudo apt install -y yarn
         else
             echo "Yarn not found. Installing Yarn globally with npm (no profile edits)…"
-            # This lands in $NVM_DIR/versions/node/<ver>/bin which is already on PATH
             npm install -g --silent yarn
         fi
     fi
@@ -140,7 +137,6 @@ if [ "$CONNECT_TO_TESTNET" = true ]; then
         # Linux version
         sed -i "3s/.*/SMART_CONTRACT_ADDRESS=$SWARM_CONTRACT/" "$ENV_FILE"
     fi
-
 
     # Docker image already builds it, no need to again.
     if [ -z "$DOCKER" ]; then
@@ -155,15 +151,15 @@ if [ "$CONNECT_TO_TESTNET" = true ]; then
     sleep 5
 
     # Try to open the URL in the default browser
-    if [ -z "$DOCKER" ]; then
-        if open http://localhost:3000 2> /dev/null; then
-            echo_green ">> Successfully opened http://localhost:3000 in your default browser."
-        else
-            echo ">> Failed to open http://localhost:3000. Please open it manually."
-        fi
-    else
-        echo_green ">> Please open http://localhost:3000 in your host browser."
-    fi
+    #if [ -z "$DOCKER" ]; then
+    #   if open http://localhost:3000 2> /dev/null; then
+    #        echo_green ">> Successfully opened http://localhost:3000 in your default browser."
+    #    else
+    #        echo ">> Failed to open http://localhost:3000. Please open it manually."
+    #    fi
+    #else
+    #echo_green ">> Please open http://localhost:3000 in your host browser."
+    #fi
 
     cd ..
 
@@ -199,7 +195,6 @@ pip install reasoning-gym>=0.1.20 # for reasoning gym env
 pip install trl # for grpo config, will be deprecated soon
 pip install hivemind@git+https://github.com/gensyn-ai/hivemind@639c964a8019de63135a2594663b5bec8e5356dd # We need the latest, 1.1.11 is broken
 
-
 if [ ! -d "$ROOT/configs" ]; then
     mkdir "$ROOT/configs"
 fi  
@@ -226,32 +221,8 @@ fi
 
 echo_green ">> Done!"
 
-HF_TOKEN=${HF_TOKEN:-""}
-if [ -n "${HF_TOKEN}" ]; then # Check if HF_TOKEN is already set and use if so. Else give user a prompt to choose.
-    HUGGINGFACE_ACCESS_TOKEN=${HF_TOKEN}
-else
-    echo -en $GREEN_TEXT
-    read -p ">> Would you like to push models you train in the RL swarm to the Hugging Face Hub? [y/N] " yn
-    echo -en $RESET_TEXT
-    yn=${yn:-N} # Default to "N" if the user presses Enter
-    case $yn in
-        [Yy]*) read -p "Enter your Hugging Face access token: " HUGGINGFACE_ACCESS_TOKEN ;;
-        [Nn]*) HUGGINGFACE_ACCESS_TOKEN="None" ;;
-        *) echo ">>> No answer was given, so NO models will be pushed to Hugging Face Hub" && HUGGINGFACE_ACCESS_TOKEN="None" ;;
-    esac
-fi
-
-echo -en $GREEN_TEXT
-read -p ">> Enter the name of the model you want to use in huggingface repo/name format, or press [Enter] to use the default model. " MODEL_NAME
-echo -en $RESET_TEXT
-
-# Only export MODEL_NAME if user provided a non-empty value
-if [ -n "$MODEL_NAME" ]; then
-    export MODEL_NAME
-    echo_green ">> Using model: $MODEL_NAME"
-else
-    echo_green ">> Using default model from config"
-fi
+export MODEL_NAME="Qwen/Qwen2.5-0.5B-Instruct"
+echo_green ">> Using model: $MODEL_NAME"
 
 echo_green ">> Good luck in the swarm!"
 echo_blue ">> And remember to star the repo on GitHub! --> https://github.com/gensyn-ai/rl-swarm"
