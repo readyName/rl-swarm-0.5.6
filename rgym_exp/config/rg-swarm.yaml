@@ -3,7 +3,7 @@ log_dir: ${oc.env:ROOT,.}/logs
 training:
   max_round: 1000000
   max_stage: 1
-  hf_push_frequency: 1
+  hf_push_frequency: 0
   num_generations: 2
   num_transplant_trees: 2
   seed: 42
@@ -61,7 +61,7 @@ game_manager:
       _target_: trl.trainer.GRPOConfig
       logging_dir: ${log_dir}
       fp16: ${training.fp16}
-    log_with: wandb
+    log_with: null
     log_dir: ${log_dir}
     epsilon: 0.2
     epsilon_high: 0.28
