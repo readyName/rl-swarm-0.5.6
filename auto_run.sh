@@ -1,7 +1,6 @@
 #!/bin/bash
 
-export WANDB_MODE=disabled
-export WANDB_MODE=offline
+export WANDB_MODE=disabled  # 完全禁用 W&B
 
 MAX_RETRIES=1000000
 WARNING_THRESHOLD=10
@@ -49,9 +48,9 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   log "🚀 第 $((RETRY_COUNT + 1)) 次尝试：启动 RL Swarm..."
 
   # ✅ 设置 MPS 环境（适用于 Mac M1/M2）
-  export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
-  export PYTORCH_ENABLE_MPS_FALLBACK=1
-  source ~/.zshrc
+  #export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
+  #export PYTORCH_ENABLE_MPS_FALLBACK=1
+  source ~/.bashrc
 
   # ✅ 检查并杀死残留的 p2pd 进程
   if pgrep -x "p2pd" >/dev/null; then
@@ -61,17 +60,28 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   fi
 
   # ✅ 在后台启动主脚本并自动输入空值
-  echo -e "" | ./run_rl_swarm.sh &
+  WANDB_MODE=disabled ./run_rl_swarm.sh &
   RL_PID=$!
 
-  # ✅ 等待 Python 子进程初始化
-  sleep 30
-  PY_PID=$(pgrep -P $RL_PID -f python | head -n 1)
-  if [ -n "$PY_PID" ] && kill -0 "$PY_PID" 2>/dev/null; then
-    log "✅ 检测到 Python 子进程，PID: $PY_PID"
-  else
-    log "⚠️ 未找到有效的 Python 子进程"
-    PY_PID=""
+  # ✅ 循环检测 Python 子进程初始化
+  MAX_WAIT=1200  # 最大等待时间（秒）
+  WAIT_INTERVAL=10  # 检测间隔（秒）
+  ELAPSED=0
+  PY_PID=""
+  log "⏳ 等待 Python 子进程初始化（最大 $MAX_WAIT 秒）..."
+
+  while [ $ELAPSED -lt $MAX_WAIT ]; do
+    PY_PID=$(pgrep -P $RL_PID -f python | head -n 1)
+    if [ -n "$PY_PID" ] && kill -0 "$PY_PID" 2>/dev/null; then
+      log "✅ 检测到 Python 子进程，PID: $PY_PID"
+      break
+    fi
+    sleep $WAIT_INTERVAL
+    ELAPSED=$((ELAPSED + WAIT_INTERVAL))
+  done
+
+  if [ -z "$PY_PID" ]; then
+    log "⚠️ 在 $MAX_WAIT 秒内未检测到 Python 子进程"
   fi
 
   # ✅ 监控子进程

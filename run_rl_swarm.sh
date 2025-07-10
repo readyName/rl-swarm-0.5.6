@@ -12,7 +12,10 @@ export IDENTITY_PATH
 export GENSYN_RESET_CONFIG
 export CONNECT_TO_TESTNET=true
 export ORG_ID
+export HF_HUB_DOWNLOAD_TIMEOUT=120  # 2 minutes
 export SWARM_CONTRACT="0xFaD7C5e93f28257429569B854151A1B8DCD404c2"
+export HUGGINGFACE_ACCESS_TOKEN="None"  # 直接设置为不上传
+export MODEL_NAME="Gensyn/Qwen2.5-0.5B-Instruct"  # 直接设置模型
 
 # Path to an RSA private key. If this path does not exist, a new key pair will be created.
 # Remove this file if you want a new PeerID.
@@ -151,15 +154,15 @@ if [ "$CONNECT_TO_TESTNET" = true ]; then
     sleep 5
 
     # Try to open the URL in the default browser
-    #if [ -z "$DOCKER" ]; then
-    #   if open http://localhost:3000 2> /dev/null; then
-    #        echo_green ">> Successfully opened http://localhost:3000 in your default browser."
-    #    else
-    #        echo ">> Failed to open http://localhost:3000. Please open it manually."
-    #    fi
-    #else
-    #echo_green ">> Please open http://localhost:3000 in your host browser."
-    #fi
+    if [ -z "$DOCKER" ]; then
+        if open http://localhost:3000 2> /dev/null; then
+            echo_green ">> Successfully opened http://localhost:3000 in your default browser."
+        else
+            echo ">> Failed to open http://localhost:3000. Please open it manually."
+        fi
+    else
+        echo_green ">> Please open http://localhost:3000 in your host browser."
+    fi
 
     cd ..
 
@@ -220,10 +223,7 @@ if [ -n "$DOCKER" ]; then
 fi
 
 echo_green ">> Done!"
-
-export MODEL_NAME="Qwen/Qwen2.5-0.5B-Instruct"
 echo_green ">> Using model: $MODEL_NAME"
-
 echo_green ">> Good luck in the swarm!"
 echo_blue ">> And remember to star the repo on GitHub! --> https://github.com/gensyn-ai/rl-swarm"
 
