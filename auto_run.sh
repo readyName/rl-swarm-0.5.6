@@ -27,7 +27,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
 
   # ✅ Start main script in background with automated input
   log "✅ Providing automated input:Y, A, 0.5, N"
-  echo -e "Y\nA\n0.5\nN\n3" | ./run_rl_swarm.sh &
+  echo -e "" | ./run_rl_swarm.sh &
   RL_PID=$!
 
   # ✅ Wait for Python child process to initialize
