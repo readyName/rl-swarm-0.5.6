@@ -18,6 +18,11 @@ RED="\033[31m"                    # 红色，用于错误信息
 YELLOW="\033[33m"                 # 黄色，用于警告信息
 RESET="\033[0m"                   # 重置颜色
 
+# 日志输出函数
+log() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
+
 # 检查日志文件路径是否可写
 check_log_file() {
     local log_dir
