@@ -6,99 +6,88 @@ MAX_RETRIES=1000000
 WARNING_THRESHOLD=10
 RETRY_COUNT=0
 
-# ====== 📝 带时间戳的日志函数 ======
+# ====== ✅ Log with timestamp ======
 log() {
-  echo "【📅 $(date '+%Y-%m-%d %H:%M:%S')】 $1"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
-# ====== 🛑 处理 Ctrl+C 退出信号 ======
-cleanup() {
-  log "🛑 检测到 Ctrl+C，正在清理进程..."
-  # 杀死主进程
-  if [ -n "$RL_PID" ] && kill -0 "$RL_PID" 2>/dev/null; then
-    log "🧨 杀死主进程 PID: $RL_PID"
-    kill -9 "$RL_PID" 2>/dev/null
-  fi
-  # 清理特定的 Python 子进程
-  if [ -n "$PY_PID" ] && kill -0 "$PY_PID" 2>/dev/null; then
-    log "⚔️ 杀死 Python 子进程 PID: $PY_PID"
-    kill -9 "$PY_PID" 2>/dev/null
-  else
-    log "⚠️ 未找到 Python 子进程 PID: $PY_PID"
-  fi
-  # 释放端口 3000
-  log "🌐 检查并释放端口 3000..."
-  PORT_PID=$(lsof -ti:3000)
-  if [ -n "$PORT_PID" ]; then
-    log "⚠️ 端口 3000 被 PID $PORT_PID 占用，正在释放..."
-    kill -9 "$PORT_PID" 2>/dev/null
-    log "✅ 端口 3000 已释放"
-  else
-    log "✅ 端口 3000 已空闲"
-  fi
-  log "🛑 清理完成，程序退出"
-  exit 0
-}
-
-# 绑定 Ctrl+C 信号到 cleanup 函数
-trap cleanup SIGINT
-
-# ====== 🔁 主循环：启动和监控 RL Swarm ======
+# ====== 🔁 Start daemon loop ======
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-  log "🚀 第 $((RETRY_COUNT + 1)) 次尝试：启动 RL Swarm..."
+  log "🚀 Attempt $((RETRY_COUNT + 1)): Starting RL Swarm..."
 
-  # ✅ 设置 MPS 环境（适用于 Mac M1/M2）
-  #export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
-  #export PYTORCH_ENABLE_MPS_FALLBACK=1
+  # ✅ Set MPS environment (for Mac M1/M2 if applicable)
+  export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
+  export PYTORCH_ENABLE_MPS_FALLBACK=1
   source ~/.zshrc
 
-  # ✅ 检查并杀死残留的 p2pd 进程
+  # ✅ Kill lingering p2pd process if exists
   if pgrep -x "p2pd" >/dev/null; then
-    log "🔍 发现残留的 p2pd 进程，正在终止..."
+    log "🔍 Found residual p2pd process, terminating..."
     pkill -9 p2pd
-    log "✅ p2pd 进程已终止"
+    log "✅ p2pd process terminated."
   fi
 
-  # ✅ 在后台启动主脚本并自动输入空值
-  WANDB_MODE=disabled ./run_rl_swarm.sh &
+  # ✅ Start main script in background with automated input
+  log "✅ Providing automated input:Y, A, 0.5, N"
+  echo -e "" | ./run_rl_swarm.sh &
   RL_PID=$!
 
-  # ✅ 循环检测 Python 子进程初始化
-  sleep 600
-  PY_PID=$(pgrep -P $RL_PID -f python | head -n 1)
+  # ✅ Wait for Python child process to initialize
+  sleep 300
+  PY_PIDS=$(pgrep -P $RL_PID -f python)
 
-  if [ -z "$PY_PID" ]; then
+  if [ -z "$PY_PIDS" ]; then
     log "⚠️ No Python subprocess found. Likely failed to start."
   else
-    log "✅ Python subprocess detected. PID: $PY_PID"
+    log "✅ Python subprocess detected. PIDs: $PY_PIDS"
   fi
 
-  # ✅ 监控子进程
-  while [ -n "$PY_PID" ] && kill -0 "$PY_PID" >/dev/null 2>&1; do
+  # ✅ Monitor all subprocesses
+  while true; do
+    ALL_EXITED=true
+    for pid in $PY_PIDS; do
+      if kill -0 $pid >/dev/null 2>&1; then
+        ALL_EXITED=false
+        break
+      fi
+    done
+    if $ALL_EXITED; then
+      break
+    fi
     sleep 2
   done
 
-  # ✅ 清理并准备重启
-  log "⚠️ Python 子进程已退出，准备重启..."
-  # 检查并释放端口 3000
-  log "🌐 检查端口 3000 状态..."
+  # ✅ Cleanup and prepare for restart
+  log "⚠️ Python subprocess exited. Restarting..."
+
+  # 🧨 Kill residual Python processes
+  log "🧨 Cleaning up residual Python processes..."
+  pgrep -f "python.*run_rl_swarm" | while read pid; do
+    log "⚔️ Killing Python PID: $pid"
+    kill -9 "$pid"
+  done
+
+  # 🌐 Check and free port 3000 if occupied
+  log "🌐 Checking port 3000 status..."
   PORT_PID=$(lsof -ti:3000)
   if [ -n "$PORT_PID" ]; then
-    log "⚠️ 端口 3000 被 PID $PORT_PID 占用，正在释放..."
-    kill -9 "$PORT_PID" 2>/dev/null
-    log "✅ 端口 3000 已释放"
+    log "⚠️ Port 3000 is occupied by PID $PORT_PID. Releasing..."
+    kill -9 $PORT_PID
+    log "✅ Port 3000 released."
   else
-    log "✅ 端口 3000 已空闲"
+    log "✅ Port 3000 is free."
   fi
 
   RETRY_COUNT=$((RETRY_COUNT + 1))
 
   if [ $RETRY_COUNT -eq $WARNING_THRESHOLD ]; then
-    log "🚨 警告：RL Swarm 已重启 $WARNING_THRESHOLD 次，请检查系统状态"
+    log "🚨 Warning: RL Swarm has restarted $WARNING_THRESHOLD times. Check system health."
   fi
 
   sleep 2
 done
 
+# ❌ Exceeded max retries
+log "🛑 Maximum retry limit ($MAX_RETRIES) reached. Exiting..."
 # ❌ 达到最大重试次数
 log "🛑 已达到最大重试次数 ($MAX_RETRIES)，程序退出"
