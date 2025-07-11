@@ -1,41 +1,15 @@
 #!/bin/bash
 
-set -euo pipefail
-# 配置参数
-RESTART_DELAY=30                  # 重启延迟时间（秒）
-CHECK_INTERVAL=10                 # 检查间隔时间（秒）
-LOG_FILE="/home/gensyn/rl_swarm/logs/auto_monitor.log"  # 日志文件路径
-PID_FILE="/home/gensyn/rl_swarm/training.pid"           # 进程 PID 文件路径
+export WANDB_MODE=disabled
+export WANDB_MODE=offline
 
 MAX_RETRIES=1000000
 WARNING_THRESHOLD=10
 RETRY_COUNT=0
 
-# 颜色输出设置
-GREEN="\033[32m"                  # 绿色，用于成功信息
-BLUE="\033[34m"                   # 蓝色，用于普通信息
-RED="\033[31m"                    # 红色，用于错误信息
-YELLOW="\033[33m"                 # 黄色，用于警告信息
-RESET="\033[0m"                   # 重置颜色
-
-# 日志输出函数
+# ====== ✅ Log with timestamp ======
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
-}
-
-# 检查日志文件路径是否可写
-check_log_file() {
-    local log_dir
-    log_dir=$(dirname "$LOG_FILE")
-    if ! mkdir -p "$log_dir" 2>/dev/null || ! touch "$LOG_FILE" 2>/dev/null; then
-        echo -e "${RED}❌ 日志文件路径 $LOG_FILE 不可写，仅输出到终端${RESET}"
-        LOG_FILE="/dev/null"  # 如果不可写，仅输出到终端
-    fi
-}
-
-# 重要信息日志（同时输出到终端和日志文件，非缓冲）
-log_important() {
-    stdbuf -oL echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
 
 # ====== 🔁 Start daemon loop ======
@@ -56,7 +30,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
 
   # ✅ Start main script in background with automated input
   log "✅ Providing automated input:Y, A, 0.5, N"
-  echo -e "" | ./run_rl_swarm.sh &
+  echo -e "Y\nA\n0.5\nN\n3" | ./run_rl_swarm.sh &
   RL_PID=$!
 
   # ✅ Wait for Python child process to initialize
@@ -106,5 +80,3 @@ done
 
 # ❌ Exceeded max retries
 log "🛑 Maximum retry limit ($MAX_RETRIES) reached. Exiting..."
-# ❌ 达到最大重试次数
-log "🛑 已达到最大重试次数 ($MAX_RETRIES)，程序退出"
