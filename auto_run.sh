@@ -28,12 +28,11 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   fi
 
   # ✅ Start main script in background with automated input
-  log "✅ Providing automated input:Y, A, 0.5, N"
   echo -e "" | ./run_rl_swarm.sh &
   RL_PID=$!
 
   # ✅ Wait for Python child process to initialize
-  sleep 600
+  sleep 1200
   PY_PID=$(pgrep -P $RL_PID -f python | head -n 1)
 
   if [ -z "$PY_PID" ]; then
