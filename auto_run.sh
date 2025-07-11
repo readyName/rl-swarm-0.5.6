@@ -50,7 +50,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   # ✅ 设置 MPS 环境（适用于 Mac M1/M2）
   #export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
   #export PYTORCH_ENABLE_MPS_FALLBACK=1
-  source ~/.bashrc
+  source ~/.zshrc
 
   # ✅ 检查并杀死残留的 p2pd 进程
   if pgrep -x "p2pd" >/dev/null; then
@@ -64,24 +64,13 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   RL_PID=$!
 
   # ✅ 循环检测 Python 子进程初始化
-  MAX_WAIT=1200  # 最大等待时间（秒）
-  WAIT_INTERVAL=10  # 检测间隔（秒）
-  ELAPSED=0
-  PY_PID=""
-  log "⏳ 等待 Python 子进程初始化（最大 $MAX_WAIT 秒）..."
-
-  while [ $ELAPSED -lt $MAX_WAIT ]; do
-    PY_PID=$(pgrep -P $RL_PID -f python | head -n 1)
-    if [ -n "$PY_PID" ] && kill -0 "$PY_PID" 2>/dev/null; then
-      log "✅ 检测到 Python 子进程，PID: $PY_PID"
-      break
-    fi
-    sleep $WAIT_INTERVAL
-    ELAPSED=$((ELAPSED + WAIT_INTERVAL))
-  done
+  sleep 600
+  PY_PID=$(pgrep -P $RL_PID -f python | head -n 1)
 
   if [ -z "$PY_PID" ]; then
-    log "⚠️ 在 $MAX_WAIT 秒内未检测到 Python 子进程"
+    log "⚠️ No Python subprocess found. Likely failed to start."
+  else
+    log "✅ Python subprocess detected. PID: $PY_PID"
   fi
 
   # ✅ 监控子进程

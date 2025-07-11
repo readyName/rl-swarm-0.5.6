@@ -1,219 +1,114 @@
 #!/bin/bash
 
-# 定义两个可能的 QuickQ 路径
-APP_PATH1="/Applications/QuickQ For Mac.app"
-APP_PATH2="/Applications/QuickQ.app"
+# 1. 获取当前终端的窗口ID并关闭其他终端窗口（排除当前终端）
+current_window_id=$(osascript -e 'tell app "Terminal" to id of front window')
+echo "当前终端窗口ID: $current_window_id，正在保护此终端不被关闭..."
 
-# 动态检测可用路径
-if [ -d "$APP_PATH1" ]; then
-    APP_PATH="$APP_PATH1"
-    APP_NAME="QuickQ For Mac"
-    echo "[$(date +"%T")] 检测到应用：$APP_PATH1"
-elif [ -d "$APP_PATH2" ]; then
-    APP_PATH="$APP_PATH2"
-    APP_NAME="QuickQ"
-    echo "[$(date +"%T")] 检测到应用：$APP_PATH2"
-else
-    echo "[$(date +"%T")] 错误：未找到 QuickQ 应用（检查路径 $APP_PATH1 和 $APP_PATH2）"
-    exit 1
-fi
-
-# 坐标参数说明：
-# 连接操作坐标
-LEFT_X=1520
-DROP_DOWN_BUTTON_X=200  # 下拉按钮X  1720在右边 200在左边
-DROP_DOWN_BUTTON_Y=430   # 下拉按钮Y
-CONNECT_BUTTON_X=200    # 连接按钮X。1720在右边 200在左边
-CONNECT_BUTTON_Y=260     # 连接按钮Y
-
-# 初始化操作坐标
-SETTINGS_BUTTON_X=349   # 设置按钮X   1869在右边。349在左边
-SETTINGS_BUTTON_Y=165    # 设置按钮Y
-
-# 检查 cliclick 依赖
-if ! command -v cliclick &> /dev/null; then
-    echo "正在通过Homebrew安装cliclick..."
-    if ! command -v brew &> /dev/null; then
-        echo "错误：请先安装Homebrew (https://brew.sh)"
-        exit 1
-    fi
-    brew install cliclick
-    
-    echo "[$(date +"%T")] 依赖安装完成，正在执行一次性权限触发操作..."
-    
-    # 启动应用
-    open "$APP_PATH"
-    sleep 5  # 等待应用启动
-    
-    # 执行窗口调整和点击
-    osascript -e "tell application \"$APP_NAME\" to activate"
-    sleep 1
-    
-    # 窗口校准函数调用
-    adjust_window
-    
-    # 点击设置按钮（触发权限请求）
-    cliclick c:${SETTINGS_BUTTON_X},${SETTINGS_BUTTON_Y}
-    echo "[$(date +"%T")] 已触发点击事件，请检查系统权限请求"
-    echo "[$(date +"%T")] 等待10秒以便您处理权限对话框..."
-    sleep 10
-    
-    # 安全终止应用（因为主循环会重新启动它）
-    pkill -9 -f "$APP_NAME"
-fi
-
-# 以下是原有脚本内容，部分优化 ▼▼▼
-reconnect_count=0
-last_vpn_status="disconnected"
-
-# QuickQ VPN 状态检测函数
-check_quickq_status() {
-    local QUICKQ_LOG="${APP_PATH}/Contents/Resources/logs/connection.log"
-    if [ -f "$QUICKQ_LOG" ]; then
-        if grep -i "Connected" "$QUICKQ_LOG" &> /dev/null; then
-            echo "[$(date +"%T")] QuickQ检测：VPN已连接"
-            last_vpn_status="connected"
-            return 0
-        else
-            echo "[$(date +"%T")] QuickQ检测：VPN未连接"
-            last_vpn_status="disconnected"
-            return 1
-        fi
-    else
-        return 1
-    fi
-}
-
-# VPN状态检测函数
-check_vpn_connection() {
-    local TEST_URLS=(
-        "https://www.google.com"
-        "https://x.com"
-        "https://www.youtube.com"
-    )
-    local PING_TEST="8.8.8.8"
-    local PING_TIMEOUT=6
-    local CURL_TIMEOUT=8
-    local MAX_RETRIES=3
-    local retry_count=0
-
-    if check_quickq_status; then
-        return 0
-    fi
-
-    if ! ping -c 2 -W $PING_TIMEOUT $PING_TEST &> /dev/null; then
-        echo "[$(date +"%T")] 基础网络连通性测试失败（ping $PING_TEST）"
-        last_vpn_status="disconnected"
-        return 1
-    fi
-
-    while [ $retry_count -lt $MAX_RETRIES ]; do
-        for url in "${TEST_URLS[@]}"; do
-            if curl --silent --head --fail --max-time $CURL_TIMEOUT "$url" &> /dev/null; then
-                echo "[$(date +"%T")] VPN检测：可通过 $url"
-                last_vpn_status="connected"
-                return 0
-            fi
-        done
-        ((retry_count++))
-        echo "[$(date +"%T")] VPN检测失败，重试 $retry_count/$MAX_RETRIES"
-        sleep 2
-    done
-
-    echo "[$(date +"%T")] VPN检测：所有测试站点均不可达"
-    last_vpn_status="disconnected"
-    return 1
-}
-
-# 窗口位置校准函数
-adjust_window() {
-    osascript <<EOF
-    tell application "System Events"
-        tell process "$APP_NAME"
-            repeat 3 times
-                if exists window 1 then
-                    set position of window 1 to {0, 0}
-                    set size of window 1 to {400, 300}
-                    exit repeat
-                else
-                    delay 0.5
-                end if
-            end repeat
-        end tell
-    end tell
+osascript <<EOF
+tell application "Terminal"
+    activate
+    set windowList to every window
+    repeat with theWindow in windowList
+        if id of theWindow is not ${current_window_id} then
+            try
+                close theWindow saving no
+            end try
+        end if
+    end repeat
+end tell
 EOF
-    echo "[$(date +"%T")] 窗口位置已校准"
-    sleep 1
+sleep 2
+
+# 2. 启动VPN（新终端窗口，放在最左下角使底部与nexus对齐，长度1/2，宽度2/3）
+osascript -e 'tell app "Terminal" to do script "~/shell/quickq_auto.sh"'
+echo "✅ VPN已启动，等待2秒后启动Docker..."
+sleep 2
+
+# 获取屏幕尺寸
+screen_size=$(osascript -e 'tell application "Finder" to get bounds of window of desktop')
+read -r x1 y1 x2 y2 <<< $(echo $screen_size | tr ',' ' ')
+width=$((x2-x1))
+height=$((y2-y1))
+
+# 窗口排列函数
+function arrange_window {
+    local title=$1
+    local x=$2
+    local y=$3
+    local w=$4
+    local h=$5
+    
+    osascript <<EOF
+tell application "Terminal"
+    set targetWindow to first window whose name contains "${title}"
+    set bounds of targetWindow to {${x}, ${y}, ${x}+${w}, ${y}+${h}}
+end tell
+EOF
 }
 
-# 执行标准连接流程
-connect_procedure() {
-    osascript -e "tell application \"$APP_NAME\" to activate"
-    sleep 0.5
-    adjust_window
-    cliclick c:${DROP_DOWN_BUTTON_X},${DROP_DOWN_BUTTON_Y}
-    echo "[$(date +"%T")] 已点击下拉菜单"
-    sleep 1
-    cliclick c:${CONNECT_BUTTON_X},${CONNECT_BUTTON_Y}
-    echo "[$(date +"%T")] 已发起连接请求"
-    sleep 60
-}
+# 布局参数
+spacing=20  # 间距20px
+upper_height=$((height/2-2*spacing))  # 上层高度总共减少40px
+lower_height=$((height/2-2*spacing))  # 下层高度总共减少40px
+lower_y=$((y1+upper_height+2*spacing))  # 下层基准位置下移40px
 
-# 应用重启初始化流程
-initialize_app() {
-    echo "[$(date +"%T")] 执行初始化操作..."
-    osascript -e "tell application \"$APP_NAME\" to activate"
-    adjust_window
-    cliclick c:${SETTINGS_BUTTON_X},${SETTINGS_BUTTON_Y}
-    echo "[$(date +"%T")] 已点击设置按钮"
-    sleep 2
-    connect_procedure
-}
+# 上层布局（gensyn和wai）
+upper_item_width=$(( (width-spacing)/2 ))  # 上层两个窗口的参考宽度，中间留20px间距
 
-# 安全终止应用
-terminate_app() {
-    echo "[$(date +"%T")] 正在停止应用..."
-    pkill -9 -f "$APP_NAME" && echo "[$(date +"%T")] 已终止残留进程"
-}
+# 下层布局（quickq、nexus、Ritual）
+# quickq宽度为item_width的2/3，高度为lower_height的1/2，剩余空间由nexus和Ritual平分
+item_width=$(( (width-2*spacing)/3 ))  # 参考宽度（按3等分计算）
+quickq_width=$((item_width*2/3))  # quickq宽度为参考宽度的2/3
+quickq_height=$((lower_height/2))  # quickq高度为下层高度的1/2
+lower_remaining_width=$((width-quickq_width-2*spacing))  # 下层剩余宽度
+lower_item_width=$((lower_remaining_width/2))  # nexus和Ritual平分剩余宽度
 
-while :; do
-    if pgrep -f "$APP_NAME" &> /dev/null; then
-        if check_vpn_connection; then
-            if [ "$last_vpn_status" == "disconnected" ]; then
-                echo "[$(date +"%T")] 状态变化：已建立VPN连接"
-            fi
-            reconnect_count=0
-            total_wait=900
-            while [ $total_wait -gt 0 ]; do
-                remaining_min=$((total_wait / 60))
-                echo "[$(date +"%T")] 下次检测将在 ${remaining_min} 分钟后进行..."
-                sleep 60
-                total_wait=$((total_wait - 60))
-            done
-            continue
-        else
-            echo "[$(date +"%T")] 检测到VPN未连接"
-            if [ $reconnect_count -lt 3 ]; then
-                connect_procedure
-                ((reconnect_count++))
-                echo "[$(date +"%T")] 重试次数：$reconnect_count/3"
-                sleep 60
-            else
-                echo "[$(date +"%T")] 达到重试上限，执行应用重置"
-                terminate_app
-                open "$APP_PATH"
-                echo "[$(date +"%T")] 应用启动中..."
-                sleep 10
-                initialize_app
-                reconnect_count=0
-                sleep 10
-            fi
-        fi
-    else
-        echo "[$(date +"%T")] 应用未运行，正在启动..."
-        open "$APP_PATH"
-        sleep 10
-        initialize_app
-    fi
-    sleep 5
-done
+# quickq底部与nexus对齐
+nexus_ritual_height=$((lower_height-30))  # nexus和Ritual高度减小30px
+nexus_ritual_y=$((lower_y+5))  # nexus和Ritual向下移动5px
+quickq_y=$((nexus_ritual_y+nexus_ritual_height-quickq_height))  # quickq底部与nexus对齐
+
+# wai宽度缩小1/2，高度保持不变（1倍）
+wai_width=$((upper_item_width/2))  # wai宽度缩小为原来1/2
+wai_height=$upper_height  # wai高度保持不变
+
+# 3. 启动Docker（不新建终端窗口）
+echo "✅ 正在后台启动Docker..."
+open -a Docker --background
+
+# 等待Docker完全启动
+echo "⏳ 等待Docker服务就绪..."
+until docker info >/dev/null 2>&1; do sleep 1; done
+sleep 30  # 额外等待确保完全启动
+
+# 4. 启动gensyn（上层左侧，向右偏移半个身位）
+osascript -e 'tell app "Terminal" to do script "until docker info >/dev/null 2>&1; do sleep 1; done && ~/shell/gensyn.sh"'
+sleep 1
+arrange_window "gensyn" $((x1+upper_item_width/2)) $y1 $upper_item_width $upper_height
+
+# 5. 启动wai（上层右侧，向右偏移半个身位，宽度缩小1/2，高度不变）
+osascript -e 'tell app "Terminal" to do script "~/shell/wai.sh"'
+sleep 1
+arrange_window "wai" $((x1+upper_item_width+spacing+upper_item_width/2)) $y1 $wai_width $wai_height
+
+# 6. 启动nexus（下层中间，高度减小30px，向下移动5px）
+osascript -e 'tell app "Terminal" to do script "~/shell/nexus.sh"'
+sleep 1
+arrange_window "nexus" $((x1+quickq_width+spacing)) $nexus_ritual_y $lower_item_width $nexus_ritual_height
+
+# 7. 启动Ritual（下层右侧，高度减小30px，向下移动5px）
+osascript -e 'tell app "Terminal" to do script "~/shell/Ritual.sh"'
+sleep 1
+arrange_window "Ritual" $((x1+quickq_width+lower_item_width+2*spacing)) $nexus_ritual_y $lower_item_width $nexus_ritual_height
+
+# 8. 排列VPN窗口（最左下角，底部与nexus对齐，长度1/2，宽度2/3）
+arrange_window "quickq" $x1 $quickq_y $quickq_width $quickq_height
+
+echo "✅ 所有项目已启动完成！"
+echo "   - Docker已在后台运行"
+echo "   - quickq窗口位于最左下角（底部与nexus对齐）"
+echo "   - gensyn窗口向右偏移半个身位"
+echo "   - wai窗口向右偏移半个身位，宽度缩小1/2，高度不变"
+echo "   - nexus和Ritual高度减小30px，向下移动5px"
+echo "   - 其他应用窗口已按布局打开（包含Ritual）"
+echo "   - 当前终端已保护，未被关闭"
