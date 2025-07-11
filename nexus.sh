@@ -65,12 +65,11 @@ cleanup() {
         echo -e "[$(get_timestamp)] ${GREEN}未找到相关 bash 进程。${NC}"
     fi
 
-    echo -e "[$(get_timestamp)] ${GREEN}清理完成，脚本退出。${NC}"
-    exit 0
+    echo -e "[$(get_timestamp)] ${GREEN}清理完成。${NC}"
 }
 
 # 设置 Ctrl+C 捕获
-trap cleanup SIGINT SIGTERM SIGHUP
+trap 'cleanup; exit 0' SIGINT SIGTERM SIGHUP
 
 # 检测操作系统
 OS=$(uname -s)
