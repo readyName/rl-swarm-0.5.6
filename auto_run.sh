@@ -33,27 +33,17 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   RL_PID=$!
 
   # ✅ Wait for Python child process to initialize
-  sleep 300
-  PY_PIDS=$(pgrep -P $RL_PID -f python)
+  sleep 600
+  PY_PID=$(pgrep -P $RL_PID -f python | head -n 1)
 
-  if [ -z "$PY_PIDS" ]; then
+  if [ -z "$PY_PID" ]; then
     log "⚠️ No Python subprocess found. Likely failed to start."
   else
-    log "✅ Python subprocess detected. PIDs: $PY_PIDS"
+    log "✅ Python subprocess detected. PID: $PY_PID"
   fi
 
-  # ✅ Monitor all subprocesses
-  while true; do
-    ALL_EXITED=true
-    for pid in $PY_PIDS; do
-      if kill -0 $pid >/dev/null 2>&1; then
-        ALL_EXITED=false
-        break
-      fi
-    done
-    if $ALL_EXITED; then
-      break
-    fi
+  # ✅ Monitor the subprocess
+  while kill -0 $PY_PID >/dev/null 2>&1; do
     sleep 2
   done
 
