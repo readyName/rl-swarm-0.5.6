@@ -1,12 +1,15 @@
 #!/bin/bash
 
 set -euo pipefail
-
 # 配置参数
 RESTART_DELAY=30                  # 重启延迟时间（秒）
 CHECK_INTERVAL=10                 # 检查间隔时间（秒）
 LOG_FILE="/home/gensyn/rl_swarm/logs/auto_monitor.log"  # 日志文件路径
 PID_FILE="/home/gensyn/rl_swarm/training.pid"           # 进程 PID 文件路径
+
+MAX_RETRIES=1000000
+WARNING_THRESHOLD=10
+RETRY_COUNT=0
 
 # 颜色输出设置
 GREEN="\033[32m"                  # 绿色，用于成功信息
@@ -35,8 +38,8 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   log "🚀 Attempt $((RETRY_COUNT + 1)): Starting RL Swarm..."
 
   # ✅ Set MPS environment (for Mac M1/M2 if applicable)
-  #export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
-  #export PYTORCH_ENABLE_MPS_FALLBACK=1
+  export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
+  export PYTORCH_ENABLE_MPS_FALLBACK=1
   source ~/.zshrc
 
   # ✅ Kill lingering p2pd process if exists
