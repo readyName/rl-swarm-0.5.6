@@ -90,7 +90,6 @@ start_training() {
     export CONNECT_TO_TESTNET=true
     export SWARM_CONTRACT="0xFaD7C5e93f28257429569B854151A1B8DCD404c2"
     export HUGGINGFACE_ACCESS_TOKEN="None"
-    export MODEL_NAME="$DEFAULT_MODEL_NAME"
     export GENSYN_RESET_CONFIG=""
     
     # 确保缓存目录存在并设置权限
