@@ -79,18 +79,19 @@ start_training() {
     echo_blue "🚀 启动 RL Swarm 训练 (Docker 环境)..."
     
     # 设置环境变量（与 Dockerfile 和 run_rl_swarm.sh 一致）
-    export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
+    #export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
     export OMP_NUM_THREADS=8
     export MKL_NUM_THREADS=8
-    export PYTORCH_ENABLE_MPS_FALLBACK=1
-    export CPU_ONLY=1
-    export HF_HUB_DOWNLOAD_TIMEOUT=300
+    #export PYTORCH_ENABLE_MPS_FALLBACK=1
+    #export CPU_ONLY=1
+    #export HF_HUB_DOWNLOAD_TIMEOUT=300
     export HF_DATASETS_CACHE="/home/gensyn/rl_swarm/.cache/huggingface/datasets"
     export HF_MODELS_CACHE="/home/gensyn/rl_swarm/.cache/huggingface/transformers"
     export CONNECT_TO_TESTNET=true
     export SWARM_CONTRACT="0xFaD7C5e93f28257429569B854151A1B8DCD404c2"
     export HUGGINGFACE_ACCESS_TOKEN="None"
     export GENSYN_RESET_CONFIG=""
+    export WANDB_MODE=disabled
     
     # 确保缓存目录存在并设置权限
     mkdir -p "$HF_DATASETS_CACHE" "$HF_MODELS_CACHE"
