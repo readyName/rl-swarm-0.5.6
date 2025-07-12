@@ -26,10 +26,4 @@ def main(cfg: DictConfig):
 if __name__ == "__main__":
     os.environ["HYDRA_FULL_ERROR"] = "1"
     Communication.set_backend(HivemindBackend)
-    import time
-    try:
-        main()
-    except Exception as e:
-        print(f"主程序异常：{e}，即将退出重启")
-        import sys
-        sys.exit(1)
+    main()
