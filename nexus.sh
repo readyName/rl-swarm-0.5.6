@@ -332,8 +332,8 @@ start_node() {
 main() {
     get_node_id
     while true; do
-        install_nexus_cli
         cleanup_restart
+        install_nexus_cli
         start_node
         log "${BLUE}节点将每隔4小时自动重启...${NC}"
         sleep 14400
