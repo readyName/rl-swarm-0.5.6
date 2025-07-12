@@ -10,7 +10,6 @@ NC='\033[0m' # 无颜色
 # 日志文件设置
 LOG_FILE="$HOME/nexus.log"
 MAX_LOG_SIZE=10485760 # 10MB，日志大小限制
-
 # 检测操作系统
 OS=$(uname -s)
 case "$OS" in
@@ -82,7 +81,6 @@ rotate_log() {
         echo -e "${YELLOW}日志文件已轮转，新日志将写入 $LOG_FILE${NC}"
     fi
 }
-
 # 安装 Homebrew（macOS 和非 Ubuntu Linux）
 install_homebrew() {
     print_header "检查 Homebrew 安装"
@@ -98,6 +96,7 @@ install_homebrew() {
         configure_shell "/opt/homebrew/bin"
     else
         configure_shell "$HOME/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/bin"
+
         if ! check_command gcc; then
             echo -e "${BLUE}在 Linux 上安装 gcc（Homebrew 依赖）...${NC}"
             if command -v yum &> /dev/null; then
@@ -165,6 +164,7 @@ install_rust() {
         exit 1
     }
     source "$HOME/.cargo/env" 2>/dev/null || echo -e "${RED}无法加载 Rust 环境，请手动运行 'source ~/.cargo/env'。${NC}"
+
     configure_shell "$HOME/.cargo/bin"
 }
 
@@ -340,5 +340,5 @@ main() {
         cleanup_restart
     done
 }
-
 main
+
