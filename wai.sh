@@ -131,8 +131,8 @@ run_wai_worker() {
 
         log "Worker 退出，退出码：$EXIT_CODE"
         if [ $EXIT_CODE -ne 0 ]; then
-            warn "⚠️ Worker 异常退出（退出码 $EXIT_CODE），等待 $((RETRY*30)) 秒后重试..."
-            sleep $((RETRY*30))
+            warn "⚠️ Worker 异常退出（退出码 $EXIT_CODE），等待 10 秒后重试..."
+            sleep 10
             RETRY=$(( RETRY < 8 ? RETRY+1 : 8 ))
         else
             log "✅ Worker 正常退出，重置重试计数"
