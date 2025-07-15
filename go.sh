@@ -29,7 +29,15 @@ if [ -d ".venv" ]; then
   source .venv/bin/activate
 else
   echo "⚠️ 未找到 .venv 虚拟环境，正在自动创建..."
-  python3 -m venv .venv
+  if command -v python3.12 >/dev/null 2>&1; then
+    PYTHON=python3.12
+  elif command -v python3 >/dev/null 2>&1; then
+    PYTHON=python3
+  else
+    echo "❌ 未找到 Python 3.12 或 python3，请先安装。"
+    exit 1
+  fi
+  $PYTHON -m venv .venv
   if [ -d ".venv" ]; then
     echo "✅ 虚拟环境创建成功，正在激活..."
     source .venv/bin/activate
