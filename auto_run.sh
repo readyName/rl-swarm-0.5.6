@@ -2,6 +2,10 @@
 
 set -euo pipefail
 export WANDB_MODE=disabled
+export WANDB_MODE=offline
+export WANDB_DISABLED=true
+export WANDB_SILENT=true
+export WANDB_CONSOLE=off
 
 # 配置参数
 RESTART_DELAY=30
@@ -75,6 +79,9 @@ System: pd PID: $pid"
     exit 0
 }
 
+# 捕获 Ctrl+C 和 SIGTERM 信号，自动清理
+trap cleanup SIGINT SIGTERM
+
 # 检查进程是否运行
 is_process_running() {
     if [ -f "$PID_FILE" ]; then
@@ -113,9 +120,6 @@ start_training() {
     log "⚠️ Main process $MAIN_PID not running. Likely failed to start."
     return 1
 }
-
-# 信号处理
-trap cleanup SIGINT SIGTERM
 
 # 主监控循环
 main() {
