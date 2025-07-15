@@ -100,8 +100,9 @@ is_process_running() {
 # 启动训练进程
 start_training() {
     log "🚀 Attempt $((RETRY_COUNT + 1)): Starting RL Swarm..."
-    #export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
-    #export PYTORCH_ENABLE_MPS_FALLBACK=1
+    export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
+    export PYTORCH_ENABLE_MPS_FALLBACK=1
+    source ~/.zshrc
     ./run_rl_swarm.sh &
     MAIN_PID=$!
     log "✅ Main process started, PID: $MAIN_PID"
