@@ -2,12 +2,26 @@
 
 CONFIG_FILE="rgym_exp/config/rg-swarm.yaml"
 
-read -p "请输入新的 initial_peers IP: " NEW_IP
+# 读取或输入 initial_peers IP
+LAST_IP_FILE=".last_ip"
+if [ -f "$LAST_IP_FILE" ]; then
+  LAST_IP=$(cat "$LAST_IP_FILE")
+  read -p "检测到上次使用的 IP: $LAST_IP，是否继续使用？(Y/n): " USE_LAST
+  if [[ "$USE_LAST" == "" || "$USE_LAST" =~ ^[Yy]$ ]]; then
+    NEW_IP="$LAST_IP"
+  else
+    read -p "请输入新的 initial_peers IP: " NEW_IP
+  fi
+else
+  read -p "请输入新的 initial_peers IP: " NEW_IP
+fi
 
 if [[ -z "$NEW_IP" ]]; then
   echo "❌ IP 不能为空，脚本退出。"
   exit 1
 fi
+
+echo "$NEW_IP" > "$LAST_IP_FILE"
 
 # 备份原文件
 cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
@@ -27,6 +41,15 @@ fi
 
 echo "✅ 已将 initial_peers 的 IP 全部替换为：$NEW_IP"
 echo "原始文件已备份为：${CONFIG_FILE}.bak"
+
+# 添加路由让该 IP 直连本地网关（不走 VPN）
+if [[ "$OSTYPE" == "darwin"* || "$OSTYPE" == "linux"* ]]; then
+  GATEWAY=$(netstat -nr | grep '^default' | awk '{print $2}' | head -n1)
+  for ip in "$NEW_IP"; do
+    sudo route -n add $ip $GATEWAY 2>/dev/null || sudo route add -host $ip $GATEWAY 2>/dev/null
+  done
+  echo "🌐 已为 $NEW_IP 添加直连路由（不走 VPN）"
+fi
 
 # 切换到脚本所在目录（假设 go.sh 在项目根目录）
 cd "$(dirname "$0")"
