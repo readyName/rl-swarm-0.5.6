@@ -13,9 +13,17 @@ fi
 cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
 
 # 替换 initial_peers 下的 IP
-sed -i "s/\/ip4\/38\.101\.215\.12\//\/ip4\/${NEW_IP}\//g" "$CONFIG_FILE"
-sed -i "s/\/ip4\/38\.101\.215\.13\//\/ip4\/${NEW_IP}\//g" "$CONFIG_FILE"
-sed -i "s/\/ip4\/38\.101\.215\.14\//\/ip4\/${NEW_IP}\//g" "$CONFIG_FILE"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # macOS
+  sed -i '' "s/\/ip4\/38\.101\.215\.12\//\/ip4\/${NEW_IP}\//g" "$CONFIG_FILE"
+  sed -i '' "s/\/ip4\/38\.101\.215\.13\//\/ip4\/${NEW_IP}\//g" "$CONFIG_FILE"
+  sed -i '' "s/\/ip4\/38\.101\.215\.14\//\/ip4\/${NEW_IP}\//g" "$CONFIG_FILE"
+else
+  # Linux
+  sed -i "s/\/ip4\/38\.101\.215\.12\//\/ip4\/${NEW_IP}\//g" "$CONFIG_FILE"
+  sed -i "s/\/ip4\/38\.101\.215\.13\//\/ip4\/${NEW_IP}\//g" "$CONFIG_FILE"
+  sed -i "s/\/ip4\/38\.101\.215\.14\//\/ip4\/${NEW_IP}\//g" "$CONFIG_FILE"
+fi
 
 echo "✅ 已将 initial_peers 的 IP 全部替换为：$NEW_IP"
 echo "原始文件已备份为：${CONFIG_FILE}.bak"
