@@ -1,6 +1,5 @@
 #!/bin/bash
 
-set -euo pipefail
 export WANDB_MODE=disabled
 export WANDB_MODE=offline
 export WANDB_DISABLED=true
