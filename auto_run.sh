@@ -39,13 +39,13 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
 
   # ✅ Wait for Python child process to initialize
   sleep 300
-  PY_PID=$(pgrep -P $RL_PID -f python | head -n 1)
+  PY_PID=$(pgrep -f "python.*swarm_launcher" | head -n 1)
 
   if [ -z "$PY_PID" ]; then
     log "⚠️ No Python subprocess found. Likely failed to start. Preparing to restart..."
     # 🧨 Kill residual Python processes
     log "🧨 Cleaning up residual Python processes..."
-    pgrep -f "python.*run_rl_swarm" | while read pid; do
+    pgrep -f "python.*swarm_launcher" | while read pid; do
       log "⚔️ Killing Python PID: $pid"
       kill -9 "$pid"
     done
@@ -79,7 +79,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
 
   # 🧨 Kill residual Python processes
   log "🧨 Cleaning up residual Python processes..."
-  pgrep -f "python.*run_rl_swarm" | while read pid; do
+  pgrep -f "python.*swarm_launcher" | while read pid; do
     log "⚔️ Killing Python PID: $pid"
     kill -9 "$pid"
   done
