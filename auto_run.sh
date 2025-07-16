@@ -42,7 +42,29 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   PY_PID=$(pgrep -P $RL_PID -f python | head -n 1)
 
   if [ -z "$PY_PID" ]; then
-    log "⚠️ No Python subprocess found. Likely failed to start."
+    log "⚠️ No Python subprocess found. Likely failed to start. Preparing to restart..."
+    # 🧨 Kill residual Python processes
+    log "🧨 Cleaning up residual Python processes..."
+    pgrep -f "python.*run_rl_swarm" | while read pid; do
+      log "⚔️ Killing Python PID: $pid"
+      kill -9 "$pid"
+    done
+    # 🌐 Check and free port 3000 if occupied
+    log "🌐 Checking port 3000 status..."
+    PORT_PID=$(lsof -ti:3000)
+    if [ -n "$PORT_PID" ]; then
+      log "⚠️ Port 3000 is occupied by PID $PORT_PID. Releasing..."
+      kill -9 $PORT_PID
+      log "✅ Port 3000 released."
+    else
+      log "✅ Port 3000 is free."
+    fi
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    if [ $RETRY_COUNT -eq $WARNING_THRESHOLD ]; then
+      log "🚨 Warning: RL Swarm has restarted $WARNING_THRESHOLD times. Check system health."
+    fi
+    sleep 2
+    continue
   else
     log "✅ Python subprocess detected. PID: $PY_PID"
   fi
