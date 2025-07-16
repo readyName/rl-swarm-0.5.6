@@ -40,7 +40,7 @@ cleanup() {
     fi
 
     # Python 子进程 PID
-    PYTHON_PIDS=$(pgrep -f "python.*run_rl_swarm" || true)
+    PYTHON_PIDS=$(pgrep -f "python.*swarm_launcher" || true)
     if [ -n "$PYTHON_PIDS" ]; then
         log "🧨 Python subprocess PIDs: $PYTHON_PIDS"
         echo "$PYTHON_PIDS" | while read pid; do
@@ -107,9 +107,9 @@ start_training() {
     MAIN_PID=$!
     log "✅ Main process started, PID: $MAIN_PID"
     echo "$MAIN_PID" > "$PID_FILE"
-    sleep 15
+    sleep 300
     if ps -p "$MAIN_PID" > /dev/null 2>&1; then
-        PYTHON_PIDS=$(pgrep -f "python.*run_rl_swarm" || true)
+        PYTHON_PIDS=$(pgrep -f "python.*swarm_launcher" || true)
         if [ -n "$PYTHON_PIDS" ]; then
             log "✅ Python subprocess PIDs: $PYTHON_PIDS"
         else
@@ -138,7 +138,7 @@ main() {
             fi
             log "🔄 Preparing restart $((RETRY_COUNT + 1)) after $RESTART_DELAY seconds..."
             # 清理残余进程和端口
-            PYTHON_PIDS=$(pgrep -f "python.*run_rl_swarm" || true)
+            PYTHON_PIDS=$(pgrep -f "python.*swarm_launcher" || true)
             if [ -n "$PYTHON_PIDS" ]; then
                 log "🧨 Residual Python PIDs: $PYTHON_PIDS"
                 echo "$PYTHON_PIDS" | while read pid; do
