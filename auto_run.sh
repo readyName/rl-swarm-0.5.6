@@ -7,6 +7,10 @@ export WANDB_DISABLED=true
 export WANDB_SILENT=true
 export WANDB_CONSOLE=off
 
+MAX_RETRIES=1000000
+WARNING_THRESHOLD=10
+RETRY_COUNT=0
+
 # ====== ✅ Log with timestamp ======
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
