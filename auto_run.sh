@@ -18,18 +18,17 @@ log() {
 
 # ====== 🛑 处理 Ctrl+C 退出信号 ======
 cleanup() {
-  log "🛑 检测到 Ctrl+C，正在清理进程..."
-  # 杀死主进程
+  local mode=$1  # "exit" 或 "restart"
+  log "🛑 触发清理流程（模式: $mode）..."
+  # 杀主进程
   if [ -n "$RL_PID" ] && kill -0 "$RL_PID" 2>/dev/null; then
     log "🧨 杀死主进程 PID: $RL_PID"
     kill -9 "$RL_PID" 2>/dev/null
   fi
-  # 清理特定的 Python 子进程
+  # 杀子进程
   if [ -n "$PY_PID" ] && kill -0 "$PY_PID" 2>/dev/null; then
     log "⚔️ 杀死 Python 子进程 PID: $PY_PID"
     kill -9 "$PY_PID" 2>/dev/null
-  else
-    log "⚠️ 未找到 Python 子进程 PID: $PY_PID"
   fi
   # 释放端口 3000
   log "🌐 检查并释放端口 3000..."
@@ -41,12 +40,28 @@ cleanup() {
   else
     log "✅ 端口 3000 已空闲"
   fi
-  log "🛑 清理完成，程序退出"
-  exit 0
+  # 清理所有相关 python 进程
+  log "🧨 清理所有相关 python 进程..."
+  pgrep -f "python.*swarm_launcher" | while read pid; do
+    log "⚔️ 杀死 python.swarm_launcher 进程 PID: $pid"
+    kill -9 "$pid" 2>/dev/null || true
+  done
+  pgrep -f "python.*run_rl_swarm" | while read pid; do
+    log "⚔️ 杀死 python.run_rl_swarm 进程 PID: $pid"
+    kill -9 "$pid" 2>/dev/null || true
+  done
+  pgrep -af python | grep Resources | awk '{print $1}' | while read pid; do
+    log "⚔️ 杀死 python+Resources 进程 PID: $pid"
+    kill -9 "$pid" 2>/dev/null || true
+  done
+  log "🛑 清理完成"
+  if [ "$mode" = "exit" ]; then
+    exit 0
+  fi
 }
 
-# 绑定 Ctrl+C 信号到 cleanup 函数
-trap cleanup SIGINT
+# 绑定 Ctrl+C 信号到 cleanup 函数（退出模式）
+trap 'cleanup exit' SIGINT
 
 # ====== 🔁 主循环：启动和监控 RL Swarm ======
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
@@ -84,33 +99,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   done
 
   # ✅ 清理并准备重启
-  log "⚠️ Python 子进程已退出，准备重启..."
-  # 检查并释放端口 3000
-  log "🌐 检查端口 3000 状态..."
-  PORT_PID=$(lsof -ti:3000)
-  if [ -n "$PORT_PID" ]; then
-    log "⚠️ 端口 3000 被 PID $PORT_PID 占用，正在释放..."
-    kill -9 "$PORT_PID" 2>/dev/null
-    log "✅ 端口 3000 已释放"
-  else
-    log "✅ 端口 3000 已空闲"
-  fi
-
-  # 清理所有相关 python 进程
-  log "🧨 清理所有相关 python 进程..."
-  pgrep -f "python.*swarm_launcher" | while read pid; do
-    log "⚔️ 杀死 python.swarm_launcher 进程 PID: $pid"
-    kill -9 "$pid" 2>/dev/null || true
-  done
-  pgrep -f "python.*run_rl_swarm" | while read pid; do
-    log "⚔️ 杀死 python.run_rl_swarm 进程 PID: $pid"
-    kill -9 "$pid" 2>/dev/null || true
-  done
-  # 新增：清理所有命令行包含 python 且包含 Resources 的进程
-  pgrep -af python | grep Resources | awk '{print $1}' | while read pid; do
-    log "⚔️ 杀死 python+Resources 进程 PID: $pid"
-    kill -9 "$pid" 2>/dev/null || true
-  done
+  cleanup restart
 
   RETRY_COUNT=$((RETRY_COUNT + 1))
 
