@@ -55,7 +55,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   # ✅ 设置 MPS 环境（适用于 Mac M1/M2）
   export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
   export PYTORCH_ENABLE_MPS_FALLBACK=1
-  source ~/.zshrc
+  source ~/.zshrc 2>/dev/null || true
 
   # ✅ 检查并杀死残留的 p2pd 进程
   if pgrep -x "p2pd" >/dev/null; then
