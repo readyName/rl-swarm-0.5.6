@@ -2,18 +2,27 @@
 
 CONFIG_FILE="rgym_exp/config/rg-swarm.yaml"
 
-# 读取或输入 initial_peers IP
-LAST_IP_FILE=".last_ip"
-if [ -f "$LAST_IP_FILE" ]; then
-  LAST_IP=$(cat "$LAST_IP_FILE")
-  read -p "检测到上次使用的 IP: $LAST_IP，是否继续使用？(Y/n): " USE_LAST
+ZSHRC=~/.zshrc
+ENV_VAR="RL_SWARM_IP"
+
+# 读取 ~/.zshrc 的 RL_SWARM_IP 环境变量
+if grep -q "^export $ENV_VAR=" "$ZSHRC"; then
+  CURRENT_IP=$(grep "^export $ENV_VAR=" "$ZSHRC" | tail -n1 | cut -d'=' -f2-)
+else
+  CURRENT_IP=""
+fi
+
+# 交互提示（10秒超时）
+if [ -n "$CURRENT_IP" ]; then
+  echo -n "检测到上次使用的 IP: $CURRENT_IP，是否继续使用？(Y/n, 10秒后默认Y): "
+  read -t 10 USE_LAST
   if [[ "$USE_LAST" == "" || "$USE_LAST" =~ ^[Yy]$ ]]; then
-    NEW_IP="$LAST_IP"
+    NEW_IP="$CURRENT_IP"
   else
     read -p "请输入新的 initial_peers IP: " NEW_IP
   fi
 else
-  read -p "请输入新的 initial_peers IP: " NEW_IP
+  read -p "未检测到历史 IP，请输入 initial_peers IP: " NEW_IP
 fi
 
 if [[ -z "$NEW_IP" ]]; then
@@ -21,7 +30,14 @@ if [[ -z "$NEW_IP" ]]; then
   exit 1
 fi
 
-echo "$NEW_IP" > "$LAST_IP_FILE"
+# 写入 ~/.zshrc
+if grep -q "^export $ENV_VAR=" "$ZSHRC"; then
+  # 替换
+  sed -i '' "s/^export $ENV_VAR=.*/export $ENV_VAR=$NEW_IP/" "$ZSHRC"
+else
+  # 追加
+  echo "export $ENV_VAR=$NEW_IP" >> "$ZSHRC"
+fi
 
 # 备份原文件
 cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
