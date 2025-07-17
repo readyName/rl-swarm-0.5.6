@@ -10,9 +10,9 @@ echo "🚀 切换到部署目录：$PROJECT_DIR"
 cd "$PROJECT_DIR" || { echo "❌ 目录不存在：$PROJECT_DIR"; exit 1; }
 
 # === 更新 deploy/config.json 配置参数 ===
-echo "ℹ️ 正在更新配置文件 deploy/config.json 中的参数..."
-jq '.chain.snapshot_sync.batch_size = 10 | .chain.snapshot_sync.starting_sub_id = 262500 | .chain.snapshot_sync.retry_delay = 60' deploy/config.json > deploy/config.json.tmp
-mv deploy/config.json.tmp deploy/config.json
+echo "ℹ️ 正在更新配置文件 config.json 中的参数..."
+jq '.chain.snapshot_sync.batch_size = 10 | .chain.snapshot_sync.starting_sub_id = 262500 | .chain.snapshot_sync.retry_delay = 60' config.json > config.json.tmp
+mv config.json.tmp config.json
 
 echo "✅ 已更新以下参数："
 echo "- batch_size: 10"
