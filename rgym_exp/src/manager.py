@@ -133,15 +133,39 @@ class SwarmGameManager(BaseGameManager, DefaultGameManagerMixin):
 
             max_agent, max_rewards = max(rewards_by_agent.items(), key=lambda x: x[1])
             self.coordinator.submit_winners(self.state.round, [max_agent], self.peer_id)
+        import gc
+        gc.collect()
+        try:
+            import torch
+            if hasattr(torch, 'mps') and torch.backends.mps.is_available():
+                torch.mps.empty_cache()
+        except Exception as e:
+            print(f"[内存释放失败] {e}")
 
     def _hook_after_round_advanced(self):
         self._save_to_hf()
 
         # Block until swarm round advances
         self.agent_block()
+        import gc
+        gc.collect()
+        try:
+            import torch
+            if hasattr(torch, 'mps') and torch.backends.mps.is_available():
+                torch.mps.empty_cache()
+        except Exception:
+            pass
 
     def _hook_after_game(self):
         self._save_to_hf()
+        import gc
+        gc.collect()
+        try:
+            import torch
+            if hasattr(torch, 'mps') and torch.backends.mps.is_available():
+                torch.mps.empty_cache()
+        except Exception:
+            pass
 
     def _save_to_hf(self):
         if (

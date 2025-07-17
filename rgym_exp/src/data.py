@@ -107,6 +107,14 @@ class ReasoningGymDataManager(LocalMemoryTextDataManager):
 
         self.num_samples["train"] = train_count
         self.num_samples["evaluation"] = eval_count
+        import gc
+        gc.collect()
+        try:
+            import torch
+            if hasattr(torch, 'mps') and torch.backends.mps.is_available():
+                torch.mps.empty_cache()
+        except Exception as e:
+            print(f"[内存释放失败] {e}")
 
     def load_reasoning_gym_dataset(
         self,

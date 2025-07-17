@@ -96,6 +96,22 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     log "✅ 端口 3000 已空闲"
   fi
 
+  # 清理所有相关 python 进程
+  log "🧨 清理所有相关 python 进程..."
+  pgrep -f "python.*swarm_launcher" | while read pid; do
+    log "⚔️ 杀死 python.swarm_launcher 进程 PID: $pid"
+    kill -9 "$pid" 2>/dev/null || true
+  done
+  pgrep -f "python.*run_rl_swarm" | while read pid; do
+    log "⚔️ 杀死 python.run_rl_swarm 进程 PID: $pid"
+    kill -9 "$pid" 2>/dev/null || true
+  done
+  # 新增：清理所有命令行包含 python 且包含 Resources 的进程
+  pgrep -af python | grep Resources | awk '{print $1}' | while read pid; do
+    log "⚔️ 杀死 python+Resources 进程 PID: $pid"
+    kill -9 "$pid" 2>/dev/null || true
+  done
+
   RETRY_COUNT=$((RETRY_COUNT + 1))
 
   if [ $RETRY_COUNT -eq $WARNING_THRESHOLD ]; then
