@@ -63,8 +63,8 @@ game_manager:
       fp16: ${training.fp16}
     log_with: wandb
     log_dir: ${log_dir}
-    epsilon: 0.25
-    epsilon_high: 0.3
+    epsilon: 0.2
+    epsilon_high: 0.28
     num_generations: ${training.num_generations}
     judge_base_url: ${eval.judge_base_url}
   data_manager:
