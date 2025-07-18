@@ -145,8 +145,7 @@ run_wai_worker() {
         fi
 
         log "✅ 启动 Worker（限时5分钟）..."
-        # 10分钟后自动终止并重启，遇到错误也立即重启
-        timeout 300 POSTHOG_DISABLED=true "$WAI_CMD" run
+        timeout 300 env POSTHOG_DISABLED=true "$WAI_CMD" run
         EXIT_CODE=$?
         if [ $EXIT_CODE -eq 124 ]; then
             log "⏰ Worker 已运行5分钟，自动重启..."
