@@ -16,61 +16,79 @@ warn() { echo -e "${YELLOW}[$(date '+%Y-%m-%d %H:%M:%S')] [WARN] $1${NC}"; }
 
 check_system() {
     log "检查系统..."
-    if [[ "$(uname)" != "Darwin" ]]; then
-        error "此脚本仅适用于 macOS"
-    fi
-    chip=$(sysctl -n machdep.cpu.brand_string)
-    if [[ ! "$chip" =~ "Apple M" ]]; then
-        warn "未检测到 Apple M 系列芯片，当前为：$chip"
+    sysname="$(uname)"
+    if [[ "$sysname" == "Darwin" ]]; then
+        chip=$(sysctl -n machdep.cpu.brand_string)
+        log "检测到 macOS，芯片信息：$chip"
+        export OS_TYPE="macos"
+    elif [[ "$sysname" == "Linux" ]]; then
+        cpu=$(lscpu | grep 'Model name' | awk -F: '{print $2}' | xargs)
+        log "检测到 Linux，CPU 型号：$cpu"
+        export OS_TYPE="linux"
     else
-        log "Apple 芯片：$chip"
+        error "此脚本仅适用于 macOS 或 Ubuntu/Linux"
     fi
 }
 
 install_missing_dependencies() {
     log "检查并安装缺失依赖..."
-
-    # 定义依赖及其检查/安装命令
-    dependencies=("curl" "git" "wget" "jq" "python3" "node")
-    commands=("curl --version" "git --version" "wget --version" "jq --version" "python3 --version" "node -v")
-    install_commands=("brew install curl" "brew install git" "brew install wget" "brew install jq" "brew install python" "brew install node")
-
-    # 确保 Homebrew 已安装
-    if ! command -v brew >/dev/null 2>&1; then
-        log "Homebrew 未安装，正在安装 Homebrew..."
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        if [[ $? -ne 0 ]]; then
-            error "Homebrew 安装失败，请手动安装 Homebrew 后重试"
-        fi
-        # 根据架构更新 Homebrew PATH
-        if [[ "$(uname -m)" == "arm64" ]]; then
-            eval "$(/opt/homebrew/bin/brew shellenv)"
-        else
-            eval "$(/usr/local/bin/brew shellenv)"
-        fi
-    else
-        log "Homebrew 已安装"
-    fi
-
-    # 检查并安装依赖
-    for ((i=0; i<${#dependencies[@]}; i++)); do
-        dep=${dependencies[$i]}
-        cmd=${commands[$i]}
-        install_cmd=${install_commands[$i]}
-
-        log "检查 ${dep}..."
-        if ! command -v "${dep}" >/dev/null 2>&1; then
-            log "${dep} 未找到，尝试安装..."
-            eval "${install_cmd}"
-            if [[ $? -eq 0 ]]; then
-                log "${dep} 安装成功"
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        dependencies=("curl" "git" "wget" "jq" "python3" "node")
+        install_commands=("brew install curl" "brew install git" "brew install wget" "brew install jq" "brew install python" "brew install node")
+        if ! command -v brew >/dev/null 2>&1; then
+            log "Homebrew 未安装，正在安装 Homebrew..."
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            if [[ $? -ne 0 ]]; then
+                error "Homebrew 安装失败，请手动安装 Homebrew 后重试"
+            fi
+            if [[ "$(uname -m)" == "arm64" ]]; then
+                eval "$(/opt/homebrew/bin/brew shellenv)"
             else
-                error "${dep} 安装失败，请手动安装"
+                eval "$(/usr/local/bin/brew shellenv)"
             fi
         else
-            log "${dep} 已安装"
+            log "Homebrew 已安装"
         fi
-    done
+        for ((i=0; i<${#dependencies[@]}; i++)); do
+            dep=${dependencies[$i]}
+            install_cmd=${install_commands[$i]}
+            log "检查 ${dep}..."
+            if ! command -v "${dep}" >/dev/null 2>&1; then
+                log "${dep} 未找到，尝试安装..."
+                eval "${install_cmd}"
+                if [[ $? -eq 0 ]]; then
+                    log "${dep} 安装成功"
+                else
+                    error "${dep} 安装失败，请手动安装"
+                fi
+            else
+                log "${dep} 已安装"
+            fi
+        done
+    elif [[ "$OS_TYPE" == "linux" ]]; then
+        dependencies=("curl" "git" "wget" "jq" "python3" "nodejs")
+        install_commands=("apt-get install -y curl" "apt-get install -y git" "apt-get install -y wget" "apt-get install -y jq" "apt-get install -y python3" "apt-get install -y nodejs")
+        if ! command -v apt-get >/dev/null 2>&1; then
+            error "未检测到 apt-get，请确认你使用的是 Ubuntu 或 Debian 系统"
+        fi
+        sudo apt-get update
+        for ((i=0; i<${#dependencies[@]}; i++)); do
+            dep=${dependencies[$i]}
+            install_cmd=${install_commands[$i]}
+            log "检查 ${dep}..."
+            if ! command -v "${dep}" >/dev/null 2>&1; then
+                log "${dep} 未找到，尝试安装..."
+                sudo ${install_cmd}
+                if [[ $? -eq 0 ]]; then
+                    log "${dep} 安装成功"
+                else
+                    error "${dep} 安装失败，请手动安装"
+                fi
+            else
+                log "${dep} 已安装"
+            fi
+        done
+    fi
 }
 
 install_wai_cli() {
@@ -89,19 +107,23 @@ install_wai_cli() {
 }
 
 configure_env() {
-    # 从 ~/.zshrc 读取 W_AI_API_KEY
+    BASH_CONFIG_FILE="$HOME/.bashrc"
     ZSH_CONFIG_FILE="$HOME/.zshrc"
-    if grep -q "^export W_AI_API_KEY=" "$ZSH_CONFIG_FILE"; then
-        export W_AI_API_KEY=$(grep "^export W_AI_API_KEY=" "$ZSH_CONFIG_FILE" | sed 's/.*=//;s/"//g')
+    if grep -q "^export W_AI_API_KEY=" "$BASH_CONFIG_FILE" 2>/dev/null; then
+        export W_AI_API_KEY=$(grep "^export W_AI_API_KEY=" "$BASH_CONFIG_FILE" | sed 's/.*=//;s/\"//g')
+        log "检测到 W_AI_API_KEY，已从 ~/.bashrc 加载"
+    elif grep -q "^export W_AI_API_KEY=" "$ZSH_CONFIG_FILE" 2>/dev/null; then
+        export W_AI_API_KEY=$(grep "^export W_AI_API_KEY=" "$ZSH_CONFIG_FILE" | sed 's/.*=//;s/\"//g')
         log "检测到 W_AI_API_KEY，已从 ~/.zshrc 加载"
     else
         read -r -p "请输入你的 WAI API 密钥: " api_key
         if [[ -z "$api_key" ]]; then
             error "W_AI_API_KEY 不能为空"
         fi
+        echo "export W_AI_API_KEY=\"$api_key\"" >> "$BASH_CONFIG_FILE"
         echo "export W_AI_API_KEY=\"$api_key\"" >> "$ZSH_CONFIG_FILE"
         export W_AI_API_KEY="$api_key"
-        log "W_AI_API_KEY 已写入 ~/.zshrc 并加载"
+        log "W_AI_API_KEY 已写入 ~/.bashrc 和 ~/.zshrc 并加载"
     fi
 }
 

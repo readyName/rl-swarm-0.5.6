@@ -107,19 +107,6 @@ class ReasoningGymDataManager(LocalMemoryTextDataManager):
 
         self.num_samples["train"] = train_count
         self.num_samples["evaluation"] = eval_count
-        import gc
-        try:
-            gc.collect()
-            print("[内存释放成功] gc.collect() 执行完成")
-        except Exception as e:
-            print(f"[内存释放失败] gc.collect() 执行异常: {e}")
-        try:
-            import torch
-            if hasattr(torch, 'mps') and torch.backends.mps.is_available():
-                torch.mps.empty_cache()
-                print("[内存释放成功] torch.mps.empty_cache() 执行完成")
-        except Exception as e:
-            print(f"[内存释放失败] torch.mps.empty_cache() 执行异常: {e}")
 
     def load_reasoning_gym_dataset(
         self,
@@ -311,6 +298,9 @@ class ReasoningGymDataManager(LocalMemoryTextDataManager):
                     for payload in swarm_states[agent][batch_id]:
                         if (
                             self.num_generations
+                            and hasattr(payload, 'actions')
+                            and payload.actions is not None
+                            and isinstance(payload.actions, list) 
                             and len(payload.actions) == self.num_generations
                         ):
                             transplants[(agent, batch_id)] = payload
