@@ -94,7 +94,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   fi
 
   # ✅ 监控子进程
-  DISK_LIMIT_GB=10 # 你设定的磁盘阈值（单位：GB）
+  DISK_LIMIT_GB=50 # 你设定的磁盘阈值（单位：GB）
   MEM_CHECK_INTERVAL=600  # 检查间隔（秒），10分钟
 
   MEM_CHECK_TIMER=0
