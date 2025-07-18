@@ -144,12 +144,12 @@ run_wai_worker() {
             log "✅ 无旧进程需要清理"
         fi
 
-        log "✅ 启动 Worker（限时10分钟）..."
+        log "✅ 启动 Worker（限时5分钟）..."
         # 10分钟后自动终止并重启，遇到错误也立即重启
-        timeout 600 POSTHOG_DISABLED=true "$WAI_CMD" run
+        timeout 300 POSTHOG_DISABLED=true "$WAI_CMD" run
         EXIT_CODE=$?
         if [ $EXIT_CODE -eq 124 ]; then
-            log "⏰ Worker 已运行10分钟，自动重启..."
+            log "⏰ Worker 已运行5分钟，自动重启..."
             RETRY=1
             sleep 10
         elif [ $EXIT_CODE -ne 0 ]; then
