@@ -144,15 +144,15 @@ run_wai_worker() {
             log "✅ 无旧进程需要清理"
         fi
 
-        log "✅ 启动 Worker..."
-        # 运行 wai run 并捕获退出码
-        POSTHOG_DISABLED=true "$WAI_CMD" run &
-        WAI_PID=$!
-        wait $WAI_PID
+        log "✅ 启动 Worker（限时10分钟）..."
+        # 10分钟后自动终止并重启，遇到错误也立即重启
+        timeout 600 POSTHOG_DISABLED=true "$WAI_CMD" run
         EXIT_CODE=$?
-
-        log "Worker 退出，退出码：$EXIT_CODE"
-        if [ $EXIT_CODE -ne 0 ]; then
+        if [ $EXIT_CODE -eq 124 ]; then
+            log "⏰ Worker 已运行10分钟，自动重启..."
+            RETRY=1
+            sleep 10
+        elif [ $EXIT_CODE -ne 0 ]; then
             warn "⚠️ Worker 异常退出（退出码 $EXIT_CODE），等待 10 秒后重试..."
             sleep 10
             RETRY=$(( RETRY < 8 ? RETRY+1 : 8 ))
