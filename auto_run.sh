@@ -94,8 +94,31 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   fi
 
   # ✅ 监控子进程
+  DISK_LIMIT_GB=10 # 你设定的磁盘阈值（单位：GB）
+  MEM_CHECK_INTERVAL=600  # 检查间隔（秒），10分钟
+
+  MEM_CHECK_TIMER=0
+
   while [ -n "$PY_PID" ] && kill -0 "$PY_PID" >/dev/null 2>&1; do
     sleep 2
+    MEM_CHECK_TIMER=$((MEM_CHECK_TIMER + 2))
+    if [ $MEM_CHECK_TIMER -ge $MEM_CHECK_INTERVAL ]; then
+      MEM_CHECK_TIMER=0
+      # 只检测根分区磁盘剩余空间，适配 macOS 和 Ubuntu
+      if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        FREE_GB=$(df -g / | awk 'NR==2 {print $4}')
+      else
+        # Linux/Ubuntu
+        FREE_GB=$(df -BG / | awk 'NR==2 {gsub(/G/,"",$4); print $4}')
+      fi
+      log "🔍 检测到磁盘剩余空间 ${FREE_GB}GB"
+      if [ "$FREE_GB" -lt "$DISK_LIMIT_GB" ]; then
+        log "🚨 磁盘空间不足（${FREE_GB}GB < ${DISK_LIMIT_GB}GB），自动重启！"
+        cleanup restart
+        break
+      fi
+    fi
   done
 
   # ✅ 清理并准备重启
