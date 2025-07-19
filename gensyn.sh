@@ -51,6 +51,8 @@ run_docker_compose() {
     local attempt=1
     local max_attempts=$max_retries
     while [ $attempt -le $max_attempts ]; do
+        info "尝试关闭已有容器..."
+        docker-compose down
         info "尝试运行容器 swarm-cpu (第 $attempt 次)..."
         if docker-compose up swarm-cpu; then
             info "容器 swarm-cpu 运行成功"
