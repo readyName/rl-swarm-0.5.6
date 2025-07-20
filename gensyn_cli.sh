@@ -7,7 +7,7 @@ ENV_VAR="RL_SWARM_IP"
 
 # 读取 ~/.zshrc 的 RL_SWARM_IP 环境变量
 if grep -q "^export $ENV_VAR=" "$ZSHRC"; then
-  CURRENT_IP=$(grep "^export $ENV_VAR=" "$ZSHRC" | tail -n1 | cut -d'=' -f2-)
+  CURRENT_IP=$(grep "^export $ENV_VAR=" "$ZSHRC" | tail -n1 | awk -F'=' '{print $2}' | tr -d '[:space:]')
 else
   CURRENT_IP=""
 fi
@@ -57,10 +57,25 @@ echo "原始文件已备份为：${CONFIG_FILE}.bak"
 # 添加路由让该 IP 直连本地网关（不走 VPN）
 if [[ "$OSTYPE" == "darwin"* || "$OSTYPE" == "linux"* ]]; then
   GATEWAY=$(netstat -nr | grep '^default' | awk '{print $2}' | head -n1)
-  for ip in "$NEW_IP"; do
-    sudo route -n add $ip $GATEWAY 2>/dev/null || sudo route add -host $ip $GATEWAY 2>/dev/null
-  done
-  echo "🌐 已为 $NEW_IP 添加直连路由（不走 VPN）"
+  
+  # 检查路由是否已存在
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    if netstat -nr | grep -q "$NEW_IP"; then
+      echo "🌐 路由已存在，跳过添加：$NEW_IP"
+    else
+      sudo route -n add $NEW_IP $GATEWAY 2>/dev/null || sudo route add -host $NEW_IP $GATEWAY 2>/dev/null
+      echo "🌐 已为 $NEW_IP 添加直连路由（不走 VPN）"
+    fi
+  else
+    # Linux
+    if ip route show | grep -q "$NEW_IP"; then
+      echo "🌐 路由已存在，跳过添加：$NEW_IP"
+    else
+      sudo route add -host $NEW_IP $GATEWAY 2>/dev/null
+      echo "🌐 已为 $NEW_IP 添加直连路由（不走 VPN）"
+    fi
+  fi
 fi
 
 # 切换到脚本所在目录（假设 go.sh 在项目根目录）
@@ -70,6 +85,11 @@ cd "$(dirname "$0")"
 if [ -d ".venv" ]; then
   echo "🔗 正在激活虚拟环境 .venv..."
   source .venv/bin/activate
+  # 检查并安装web3
+  if ! python -c "import web3" 2>/dev/null; then
+    echo "⚙️ 正在为虚拟环境安装 web3..."
+    pip install web3
+  fi
 else
   echo "⚠️ 未找到 .venv 虚拟环境，正在自动创建..."
   if command -v python3.12 >/dev/null 2>&1; then
@@ -84,6 +104,11 @@ else
   if [ -d ".venv" ]; then
     echo "✅ 虚拟环境创建成功，正在激活..."
     source .venv/bin/activate
+    # 检查并安装web3
+    if ! python -c "import web3" 2>/dev/null; then
+      echo "⚙️ 正在为虚拟环境安装 web3..."
+      pip install web3
+    fi
   else
     echo "❌ 虚拟环境创建失败，跳过激活。"
   fi

@@ -63,6 +63,20 @@ cleanup() {
 # 绑定 Ctrl+C 信号到 cleanup 函数（退出模式）
 trap 'cleanup exit' SIGINT
 
+# ====== Peer ID 查询并写入桌面函数 ======
+query_and_save_peerid_info() {
+  local peer_id="$1"
+  local desktop_path=~/Desktop/peerid_info.txt
+  local output
+  output=$(python3 ./gensyncheck.py "$peer_id" | tee -a "$desktop_path")
+  if echo "$output" | grep -q "__NEED_RESTART__"; then
+    log "⚠️ 超过4小时未有新交易，自动重启！"
+    cleanup restart
+  fi
+  log "✅ 已尝试查询 Peer ID 合约参数，结果已追加写入桌面: $desktop_path"
+}
+
+
 # ====== 🔁 主循环：启动和监控 RL Swarm ======
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   log "🚀 第 $((RETRY_COUNT + 1)) 次尝试：启动 RL Swarm..."
@@ -93,18 +107,82 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     log "✅ Python subprocess detected. PID: $PY_PID"
   fi
 
+  # ====== 检测并保存 Peer ID ======
+  PEERID_LOG="logs/swarm_launcher.log"
+  PEERID_FILE="peerid.txt"
+  while true; do
+    if [ -f "$PEERID_LOG" ]; then
+      PEER_ID=$(grep "Peer ID" "$PEERID_LOG" | sed -n 's/.*Peer ID \[\(.*\)\].*/\1/p' | tail -n1)
+      if [ -n "$PEER_ID" ]; then
+        # 检查是否已保存过 peerid.txt
+        if [ -f "$PEERID_FILE" ]; then
+          OLD_PEER_ID=$(cat "$PEERID_FILE")
+        else
+          OLD_PEER_ID=""
+        fi
+
+        if [ "$PEER_ID" != "$OLD_PEER_ID" ]; then
+          echo "$PEER_ID" > "$PEERID_FILE"
+          log "✅ 已检测并保存 Peer ID: $PEER_ID"
+        fi
+
+        PEER_ID_FOUND=1
+        # 不再这里调用 query_and_save_peerid_info，延后到主循环3小时后
+        break
+      else
+        log "⏳ 日志文件已生成，但未检测到 Peer ID，1分钟后重试..."
+      fi
+    else
+      log "⏳ 未检测到 Peer ID 日志文件，1分钟后重试..."
+    fi
+    sleep 60
+  done
+
   # ✅ 监控子进程
   DISK_LIMIT_GB=50 # 你设定的磁盘阈值（单位：GB）
   MEM_CHECK_INTERVAL=600  # 检查间隔（秒），10分钟
 
   MEM_CHECK_TIMER=0
+  PEERID_LOG="logs/swarm_launcher.log"
+  PEERID_FILE="peerid.txt"
+  PEER_ID_FOUND=0
+  PEERID_QUERY_INTERVAL=10800  # 3小时=10800秒
+  PEERID_QUERY_TIMER=0
+  FIRST_QUERY_DONE=0
 
   while [ -n "$PY_PID" ] && kill -0 "$PY_PID" >/dev/null 2>&1; do
     sleep 2
     MEM_CHECK_TIMER=$((MEM_CHECK_TIMER + 2))
+    PEERID_QUERY_TIMER=$((PEERID_QUERY_TIMER + 2))
     if [ $MEM_CHECK_TIMER -ge $MEM_CHECK_INTERVAL ]; then
       MEM_CHECK_TIMER=0
-      # 只检测根分区磁盘剩余空间，适配 macOS 和 Ubuntu
+
+      # 检测 Peer ID（只要没检测到就继续检测，检测到后就不再检测）
+      if [ $PEER_ID_FOUND -eq 0 ]; then
+        if [ -f "$PEERID_LOG" ]; then
+          PEER_ID=$(grep "Peer ID" "$PEERID_LOG" | sed -n 's/.*Peer ID \[\(.*\)\].*/\1/p' | tail -n1)
+          if [ -n "$PEER_ID" ]; then
+            if [ -f "$PEERID_FILE" ]; then
+              OLD_PEER_ID=$(cat "$PEERID_FILE")
+              if [ "$PEER_ID" != "$OLD_PEER_ID" ]; then
+                log "⚠️ 检测到新的 Peer ID: $PEER_ID，与之前保存的不一致（$OLD_PEER_ID），请注意！"
+              fi
+            fi
+            echo "$PEER_ID" > "$PEERID_FILE"
+            log "✅ 已检测并保存 Peer ID: $PEER_ID"
+            PEER_ID_FOUND=1
+            # query_and_save_peerid_info "$PEER_ID"  # 删除这行，避免检测到 PeerID 时立即查合约和交易
+            PEERID_QUERY_TIMER=0
+            # break  # 删除这行，避免退出监控循环导致重启
+          else
+            log "⏳ 未检测到 Peer ID，本轮继续检测..."
+          fi
+        else
+          log "⏳ 未检测到 Peer ID 日志文件，本轮继续检测..."
+        fi
+      fi
+
+      # 检测磁盘空间，适配 macOS 和 Ubuntu
       if [[ "$OSTYPE" == "darwin"* ]]; then
         # macOS
         FREE_GB=$(df -g / | awk 'NR==2 {print $4}')
@@ -118,6 +196,19 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         cleanup restart
         break
       fi
+    fi
+
+    # 3小时后首次查询合约参数和交易时间
+    if [ $FIRST_QUERY_DONE -eq 0 ] && [ $PEERID_QUERY_TIMER -ge $PEERID_QUERY_INTERVAL ]; then
+      query_and_save_peerid_info "$PEER_ID"
+      FIRST_QUERY_DONE=1
+      PEERID_QUERY_TIMER=0
+    fi
+
+    # 之后每3小时自动查询一次
+    if [ $FIRST_QUERY_DONE -eq 1 ] && [ $PEERID_QUERY_TIMER -ge $PEERID_QUERY_INTERVAL ]; then
+      query_and_save_peerid_info "$PEER_ID"
+      PEERID_QUERY_TIMER=0
     fi
   done
 

@@ -183,7 +183,7 @@ while :; do
                 echo "[$(date +"%T")] 状态变化：已建立VPN连接"
             fi
             reconnect_count=0
-            total_wait=600
+            total_wait=300
             while [ $total_wait -gt 0 ]; do
                 remaining_min=$((total_wait / 60))
                 echo "[$(date +"%T")] 下次检测将在 ${remaining_min} 分钟后进行..."
