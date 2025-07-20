@@ -25,55 +25,59 @@ else
   read -p "未检测到历史 IP，请输入 initial_peers IP: " NEW_IP
 fi
 
+# 新增：如果用户未输入新IP且环境变量也没有历史IP，则跳过IP相关配置，继续执行
 if [[ -z "$NEW_IP" ]]; then
-  echo "❌ IP 不能为空，脚本退出。"
-  exit 1
-fi
-
-# 写入 ~/.zshrc
-if grep -q "^export $ENV_VAR=" "$ZSHRC"; then
-  # 替换
-  sed -i '' "s/^export $ENV_VAR=.*/export $ENV_VAR=$NEW_IP/" "$ZSHRC"
+  echo "ℹ️ 未输入IP，且环境变量无历史IP，跳过IP相关配置，继续执行。"
 else
-  # 追加
-  echo "export $ENV_VAR=$NEW_IP" >> "$ZSHRC"
-fi
-
-# 备份原文件
-cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
-
-# 替换 initial_peers 下的 IP
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  # macOS
-  sed -i '' "s/\/ip4\/[0-9]\{1,3\}\(\.[0-9]\{1,3\}\)\{3\}\//\/ip4\/${NEW_IP}\//g" "$CONFIG_FILE"
-else
-  # Linux
-  sed -i "s/\/ip4\/[0-9]\{1,3\}\(\.[0-9]\{1,3\}\)\{3\}\//\/ip4\/${NEW_IP}\//g" "$CONFIG_FILE"
-fi
-
-echo "✅ 已将 initial_peers 的 IP 全部替换为：$NEW_IP"
-echo "原始文件已备份为：${CONFIG_FILE}.bak"
-
-# 添加路由让该 IP 直连本地网关（不走 VPN）
-if [[ "$OSTYPE" == "darwin"* || "$OSTYPE" == "linux"* ]]; then
-  GATEWAY=$(netstat -nr | grep '^default' | awk '{print $2}' | head -n1)
-  
-  # 检查路由是否已存在
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS
-    if netstat -nr | grep -q "$NEW_IP"; then
-      echo "🌐 路由已存在，跳过添加：$NEW_IP"
-    else
-      sudo route -n add $NEW_IP $GATEWAY 2>/dev/null || sudo route add -host $NEW_IP $GATEWAY 2>/dev/null
-      echo "🌐 已为 $NEW_IP 添加直连路由（不走 VPN）"
-    fi
+  # 只有输入了新IP才进行后续IP相关操作
+  if [ "$NEW_IP" == "$CURRENT_IP" ]; then
+    echo "ℹ️ 未输入新IP，继续使用历史IP，不修改配置文件。"
   else
-    # Linux
-    if ip route show | grep -q "$NEW_IP"; then
-      echo "🌐 路由已存在，跳过添加：$NEW_IP"
+    # 写入 ~/.zshrc
+    if grep -q "^export $ENV_VAR=" "$ZSHRC"; then
+      # 替换
+      sed -i '' "s/^export $ENV_VAR=.*/export $ENV_VAR=$NEW_IP/" "$ZSHRC"
     else
-      sudo route add -host $NEW_IP $GATEWAY 2>/dev/null
-      echo "🌐 已为 $NEW_IP 添加直连路由（不走 VPN）"
+      # 追加
+      echo "export $ENV_VAR=$NEW_IP" >> "$ZSHRC"
+    fi
+
+    # 备份原文件
+    cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
+
+    # 替换 initial_peers 下的 IP
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      # macOS
+      sed -i '' "s/\/ip4\/[0-9]\{1,3\}\(\.[0-9]\{1,3\}\)\{3\}\//\/ip4\/${NEW_IP}\//g" "$CONFIG_FILE"
+    else
+      # Linux
+      sed -i "s/\/ip4\/[0-9]\{1,3\}\(\.[0-9]\{1,3\}\)\{3\}\//\/ip4\/${NEW_IP}\//g" "$CONFIG_FILE"
+    fi
+
+    echo "✅ 已将 initial_peers 的 IP 全部替换为：$NEW_IP"
+    echo "原始文件已备份为：${CONFIG_FILE}.bak"
+
+    # 添加路由让该 IP 直连本地网关（不走 VPN）
+    if [[ "$OSTYPE" == "darwin"* || "$OSTYPE" == "linux"* ]]; then
+      GATEWAY=$(netstat -nr | grep '^default' | awk '{print $2}' | head -n1)
+      # 检查路由是否已存在
+      if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        if netstat -nr | grep -q "$NEW_IP"; then
+          echo "🌐 路由已存在，跳过添加：$NEW_IP"
+        else
+          sudo route -n add $NEW_IP $GATEWAY 2>/dev/null || sudo route add -host $NEW_IP $GATEWAY 2>/dev/null
+          echo "🌐 已为 $NEW_IP 添加直连路由（不走 VPN）"
+        fi
+      else
+        # Linux
+        if ip route show | grep -q "$NEW_IP"; then
+          echo "🌐 路由已存在，跳过添加：$NEW_IP"
+        else
+          sudo route add -host $NEW_IP $GATEWAY 2>/dev/null
+          echo "🌐 已为 $NEW_IP 添加直连路由（不走 VPN）"
+        fi
+      fi
     fi
   fi
 fi
