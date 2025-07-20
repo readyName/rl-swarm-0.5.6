@@ -190,11 +190,11 @@ if [ "$CONNECT_TO_TESTNET" = true ]; then
 fi
 
 echo_green ">> Getting requirements..."
-pip install --upgrade pip > /dev/null 2>&1
-pip install gensyn-genrl==0.1.4 > /dev/null 2>&1
-pip install reasoning-gym>=0.1.20 > /dev/null 2>&1
-pip install trl > /dev/null 2>&1
-pip install hivemind@git+https://github.com/gensyn-ai/hivemind@639c964a8019de63135a2594663b5bec8e5356dd > /dev/null 2>&1
+pip install --upgrade pip > /dev/null
+pip install gensyn-genrl==0.1.4 > /dev/null
+pip install reasoning-gym>=0.1.20 > /dev/null
+pip install trl > /dev/null
+pip install hivemind@git+https://github.com/gensyn-ai/hivemind@639c964a8019de63135a2594663b5bec8e5356dd > /dev/null
 
 if [ ! -d "$ROOT/configs" ]; then
     mkdir "$ROOT/configs"
