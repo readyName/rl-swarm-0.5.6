@@ -110,33 +110,27 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   # ====== 检测并保存 Peer ID ======
   PEERID_LOG="logs/swarm_launcher.log"
   PEERID_FILE="peerid.txt"
-  while true; do
-    if [ -f "$PEERID_LOG" ]; then
-      PEER_ID=$(grep "Peer ID" "$PEERID_LOG" | sed -n 's/.*Peer ID \[\(.*\)\].*/\1/p' | tail -n1)
-      if [ -n "$PEER_ID" ]; then
-        # 检查是否已保存过 peerid.txt
-        if [ -f "$PEERID_FILE" ]; then
-          OLD_PEER_ID=$(cat "$PEERID_FILE")
-        else
-          OLD_PEER_ID=""
-        fi
-
-        if [ "$PEER_ID" != "$OLD_PEER_ID" ]; then
-          echo "$PEER_ID" > "$PEERID_FILE"
-          log "✅ 已检测并保存 Peer ID: $PEER_ID"
-        fi
-
-        PEER_ID_FOUND=1
-        # 不再这里调用 query_and_save_peerid_info，延后到主循环3小时后
-        break
+  if [ -f "$PEERID_LOG" ]; then
+    PEER_ID=$(grep "Peer ID" "$PEERID_LOG" | sed -n 's/.*Peer ID \[\(.*\)\].*/\1/p' | tail -n1)
+    if [ -n "$PEER_ID" ]; then
+      # 检查是否已保存过 peerid.txt
+      if [ -f "$PEERID_FILE" ]; then
+        OLD_PEER_ID=$(cat "$PEERID_FILE")
       else
-        log "⏳ 日志文件已生成，但未检测到 Peer ID，1分钟后重试..."
+        OLD_PEER_ID=""
       fi
+
+      if [ "$PEER_ID" != "$OLD_PEER_ID" ]; then
+        echo "$PEER_ID" > "$PEERID_FILE"
+        log "✅ 已检测并保存 Peer ID: $PEER_ID"
+      fi
+      PEER_ID_FOUND=1
     else
-      log "⏳ 未检测到 Peer ID 日志文件，1分钟后重试..."
+      log "⏳ 日志文件已生成，但未检测到 Peer ID，本轮跳过，稍后重试..."
     fi
-    sleep 60
-  done
+  else
+    log "⏳ 未检测到 Peer ID 日志文件，本轮跳过，稍后重试..."
+  fi
 
   # ✅ 监控子进程
   DISK_LIMIT_GB=50 # 你设定的磁盘阈值（单位：GB）
