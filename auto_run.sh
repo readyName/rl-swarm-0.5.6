@@ -151,28 +151,18 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     if [ $MEM_CHECK_TIMER -ge $MEM_CHECK_INTERVAL ]; then
       MEM_CHECK_TIMER=0
 
-      # 检测 Peer ID（只要没检测到就继续检测，检测到后就不再检测）
-      if [ $PEER_ID_FOUND -eq 0 ]; then
+      # 每次定时只检测一次 PeerID，检测不到只输出日志，主循环继续
+      if [ ! -f "$PEERID_FILE" ]; then
         if [ -f "$PEERID_LOG" ]; then
           PEER_ID=$(grep "Peer ID" "$PEERID_LOG" | sed -n 's/.*Peer ID \[\(.*\)\].*/\1/p' | tail -n1)
           if [ -n "$PEER_ID" ]; then
-            if [ -f "$PEERID_FILE" ]; then
-              OLD_PEER_ID=$(cat "$PEERID_FILE")
-              if [ "$PEER_ID" != "$OLD_PEER_ID" ]; then
-                log "⚠️ 检测到新的 Peer ID: $PEER_ID，与之前保存的不一致（$OLD_PEER_ID），请注意！"
-              fi
-            fi
             echo "$PEER_ID" > "$PEERID_FILE"
             log "✅ 已检测并保存 Peer ID: $PEER_ID"
-            PEER_ID_FOUND=1
-            # query_and_save_peerid_info "$PEER_ID"  # 删除这行，避免检测到 PeerID 时立即查合约和交易
-            PEERID_QUERY_TIMER=0
-            # break  # 删除这行，避免退出监控循环导致重启
           else
-            log "⏳ 未检测到 Peer ID，本轮继续检测..."
+            log "⏳ 未检测到 Peer ID，本轮跳过..."
           fi
         else
-          log "⏳ 未检测到 Peer ID 日志文件，本轮继续检测..."
+          log "⏳ 未检测到 Peer ID 日志文件，本轮跳过..."
         fi
       fi
 
@@ -192,17 +182,21 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
       fi
     fi
 
-    # 3小时后首次查询合约参数和交易时间
-    if [ $FIRST_QUERY_DONE -eq 0 ] && [ $PEERID_QUERY_TIMER -ge $PEERID_QUERY_INTERVAL ]; then
-      query_and_save_peerid_info "$PEER_ID"
-      FIRST_QUERY_DONE=1
-      PEERID_QUERY_TIMER=0
-    fi
+    # 只有检测到并保存了 PeerID 后，才执行合约/链上交易等定时任务
+    if [ -f "$PEERID_FILE" ]; then
+      PEER_ID=$(cat "$PEERID_FILE")
+      # 3小时后首次查询合约参数和交易时间
+      if [ $FIRST_QUERY_DONE -eq 0 ] && [ $PEERID_QUERY_TIMER -ge $PEERID_QUERY_INTERVAL ]; then
+        query_and_save_peerid_info "$PEER_ID"
+        FIRST_QUERY_DONE=1
+        PEERID_QUERY_TIMER=0
+      fi
 
-    # 之后每3小时自动查询一次
-    if [ $FIRST_QUERY_DONE -eq 1 ] && [ $PEERID_QUERY_TIMER -ge $PEERID_QUERY_INTERVAL ]; then
-      query_and_save_peerid_info "$PEER_ID"
-      PEERID_QUERY_TIMER=0
+      # 之后每3小时自动查询一次
+      if [ $FIRST_QUERY_DONE -eq 1 ] && [ $PEERID_QUERY_TIMER -ge $PEERID_QUERY_INTERVAL ]; then
+        query_and_save_peerid_info "$PEER_ID"
+        PEERID_QUERY_TIMER=0
+      fi
     fi
   done
 
