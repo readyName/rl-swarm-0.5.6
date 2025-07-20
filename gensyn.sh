@@ -1,87 +1,123 @@
 #!/bin/bash
-set -euo pipefail
 
-log_file="./deploy_rl_swarm_0.5.3.log"
-max_retries=10
-retry_count=0
+CONFIG_FILE="rgym_exp/config/rg-swarm.yaml"
 
-info() {
-    echo -e "[$(date +"%Y-%m-%d %T")] [INFO] $*" | tee -a "$log_file"
-}
+ZSHRC=~/.zshrc
+ENV_VAR="RL_SWARM_IP"
 
-error() {
-    echo -e "[$(date +"%Y-%m-%d %T")] [ERROR] $*" >&2 | tee -a "$log_file"
-    if [ $retry_count -lt $max_retries ]; then
-        retry_count=$((retry_count+1))
-        info "自动重试 ($retry_count/$max_retries)..."
-        exec "$0" "$@"
+# 读取 ~/.zshrc 的 RL_SWARM_IP 环境变量
+if grep -q "^export $ENV_VAR=" "$ZSHRC"; then
+  CURRENT_IP=$(grep "^export $ENV_VAR=" "$ZSHRC" | tail -n1 | awk -F'=' '{print $2}' | tr -d '[:space:]')
+else
+  CURRENT_IP=""
+fi
+
+# 交互提示（10秒超时）
+if [ -n "$CURRENT_IP" ]; then
+  echo -n "检测到上次使用的 IP: $CURRENT_IP，是否继续使用？(Y/n, 10秒后默认Y): "
+  read -t 10 USE_LAST
+  if [[ "$USE_LAST" == "" || "$USE_LAST" =~ ^[Yy]$ ]]; then
+    NEW_IP="$CURRENT_IP"
+  else
+    read -p "请输入新的 initial_peers IP: " NEW_IP
+  fi
+else
+  read -p "未检测到历史 IP，请输入 initial_peers IP: " NEW_IP
+fi
+
+if [[ -z "$NEW_IP" ]]; then
+  echo "❌ IP 不能为空，脚本退出。"
+  exit 1
+fi
+
+# 写入 ~/.zshrc
+if grep -q "^export $ENV_VAR=" "$ZSHRC"; then
+  # 替换
+  sed -i '' "s/^export $ENV_VAR=.*/export $ENV_VAR=$NEW_IP/" "$ZSHRC"
+else
+  # 追加
+  echo "export $ENV_VAR=$NEW_IP" >> "$ZSHRC"
+fi
+
+# 备份原文件
+cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
+
+# 替换 initial_peers 下的 IP
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # macOS
+  sed -i '' "s/\/ip4\/[0-9]\{1,3\}\(\.[0-9]\{1,3\}\)\{3\}\//\/ip4\/${NEW_IP}\//g" "$CONFIG_FILE"
+else
+  # Linux
+  sed -i "s/\/ip4\/[0-9]\{1,3\}\(\.[0-9]\{1,3\}\)\{3\}\//\/ip4\/${NEW_IP}\//g" "$CONFIG_FILE"
+fi
+
+echo "✅ 已将 initial_peers 的 IP 全部替换为：$NEW_IP"
+echo "原始文件已备份为：${CONFIG_FILE}.bak"
+
+# 添加路由让该 IP 直连本地网关（不走 VPN）
+if [[ "$OSTYPE" == "darwin"* || "$OSTYPE" == "linux"* ]]; then
+  GATEWAY=$(netstat -nr | grep '^default' | awk '{print $2}' | head -n1)
+  
+  # 检查路由是否已存在
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    if netstat -nr | grep -q "$NEW_IP"; then
+      echo "🌐 路由已存在，跳过添加：$NEW_IP"
     else
-        echo -e "[$(date +"%Y-%m-%d %T")] [ERROR] 达到最大重试次数 ($max_retries 次)，请手动重启 Docker 并检查环境" >&2 | tee -a "$log_file"
-        exit 1
+      sudo route -n add $NEW_IP $GATEWAY 2>/dev/null || sudo route add -host $NEW_IP $GATEWAY 2>/dev/null
+      echo "🌐 已为 $NEW_IP 添加直连路由（不走 VPN）"
     fi
-}
-
-# 检查 Docker 是否安装
-check_docker() {
-    if ! command -v docker &> /dev/null; then
-        error "Docker 未安装，请先安装 Docker (https://www.docker.com)"
+  else
+    # Linux
+    if ip route show | grep -q "$NEW_IP"; then
+      echo "🌐 路由已存在，跳过添加：$NEW_IP"
+    else
+      sudo route add -host $NEW_IP $GATEWAY 2>/dev/null
+      echo "🌐 已为 $NEW_IP 添加直连路由（不走 VPN）"
     fi
-    if ! command -v docker-compose &> /dev/null; then
-        error "Docker Compose 未安装，请先安装 Docker Compose"
+  fi
+fi
+
+# 切换到脚本所在目录（假设 go.sh 在项目根目录）
+cd "$(dirname "$0")"
+
+# 激活虚拟环境并执行 auto_run.sh
+if [ -d ".venv" ]; then
+  echo "🔗 正在激活虚拟环境 .venv..."
+  source .venv/bin/activate
+  # 检查并安装web3
+  if ! python -c "import web3" 2>/dev/null; then
+    echo "⚙️ 正在为虚拟环境安装 web3..."
+    pip install web3
+  fi
+else
+  echo "⚠️ 未找到 .venv 虚拟环境，正在自动创建..."
+  if command -v python3.12 >/dev/null 2>&1; then
+    PYTHON=python3.12
+  elif command -v python3 >/dev/null 2>&1; then
+    PYTHON=python3
+  else
+    echo "❌ 未找到 Python 3.12 或 python3，请先安装。"
+    exit 1
+  fi
+  $PYTHON -m venv .venv
+  if [ -d ".venv" ]; then
+    echo "✅ 虚拟环境创建成功，正在激活..."
+    source .venv/bin/activate
+    # 检查并安装web3
+    if ! python -c "import web3" 2>/dev/null; then
+      echo "⚙️ 正在为虚拟环境安装 web3..."
+      pip install web3
     fi
-}
+  else
+    echo "❌ 虚拟环境创建失败，跳过激活。"
+  fi
+fi
 
-# 打开 Docker
-start_docker() {
-    info "正在启动 Docker..."
-    if ! open -a Docker; then
-        error "无法启动 Docker 应用，请检查 Docker 是否安装或手动启动"
-    fi
-    # 等待 Docker 启动
-    info "等待 Docker 启动完成..."
-    sleep 10
-    # 检查 Docker 是否运行
-    if ! docker info &> /dev/null; then
-        error "Docker 未正常运行，请检查 Docker 状态"
-    fi
-}
-
-# 运行 Docker Compose 容器
-run_docker_compose() {
-    local attempt=1
-    local max_attempts=$max_retries
-    while [ $attempt -le $max_attempts ]; do
-        info "尝试关闭已有容器..."
-        docker-compose down
-        info "尝试运行容器 swarm-cpu (第 $attempt 次)..."
-        if docker-compose up swarm-cpu; then
-            info "容器 swarm-cpu 运行成功"
-            return 0
-        else
-            info "Docker 构建失败，重试中..."
-            sleep 2
-            ((attempt++))
-        fi
-    done
-    error "Docker 构建超过最大重试次数 ($max_attempts 次)"
-}
-
-# 主逻辑
-main() {
-    # 检查 Docker 环境
-    check_docker
-
-    # 启动 Docker
-    start_docker
-
-    # 进入目录
-    info "进入 rl-swarm-0.5.3 目录..."
-    cd ~/rl-swarm-0.5.3 || error "进入 rl-swarm-0.5.3 目录失败"
-
-    # 运行容器
-    info "🚀 运行 swarm-cpu 容器..."
-    run_docker_compose
-}
-
-# 执行主逻辑
-main "$@"
+# 执行 auto_run.sh
+if [ -f "./auto_run.sh" ]; then
+  echo "🚀 执行 ./auto_run.sh ..."
+  ./auto_run.sh
+else
+  echo "❌ 未找到 auto_run.sh，无法执行。"
+fi

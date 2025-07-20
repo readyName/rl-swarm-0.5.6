@@ -68,7 +68,7 @@ query_and_save_peerid_info() {
   local peer_id="$1"
   local desktop_path=~/Desktop/peerid_info.txt
   local output
-  output=$(python3 ./gensyncheck.py "$peer_id" | tee -a "$desktop_path")
+  output=$(.venv/bin/python ./gensyncheck.py "$peer_id" | tee -a "$desktop_path")
   if echo "$output" | grep -q "__NEED_RESTART__"; then
     log "⚠️ 超过4小时未有新交易，自动重启！"
     cleanup restart
