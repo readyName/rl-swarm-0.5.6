@@ -101,7 +101,9 @@ check_vpn_connection() {
         return 0
     fi
 
-    if ! ping -c 2 -W $PING_TIMEOUT $PING_TEST &> /dev/null; then
+    # 原逻辑：if ! ping -c 2 -W $PING_TIMEOUT $PING_TEST &> /dev/null; then
+    # 新逻辑：只要能 ping 通就检测通过
+    if ! ping -c 1 $PING_TEST &> /dev/null; then
         echo "[$(date +"%T")] 基础网络连通性测试失败（ping $PING_TEST）"
         last_vpn_status="disconnected"
         return 1
@@ -183,7 +185,7 @@ while :; do
                 echo "[$(date +"%T")] 状态变化：已建立VPN连接"
             fi
             reconnect_count=0
-            total_wait=300
+            total_wait=600
             while [ $total_wait -gt 0 ]; do
                 remaining_min=$((total_wait / 60))
                 echo "[$(date +"%T")] 下次检测将在 ${remaining_min} 分钟后进行..."
