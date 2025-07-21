@@ -350,7 +350,12 @@ main() {
     get_node_id
     while true; do
         cleanup_restart
-      install_nexus_cli
+        install_nexus_cli
+        # 新增：重启前清理日志
+        if [ -f "$LOG_FILE" ]; then
+            rm -f "$LOG_FILE"
+            echo -e "${YELLOW}已清理旧日志文件：$LOG_FILE${NC}"
+        fi
         start_node
         log "${BLUE}节点将每隔4小时自动重启...${NC}"
         sleep 14400
