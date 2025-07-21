@@ -36,13 +36,10 @@ fi
 if [[ -z "$NEW_IP" ]]; then
   echo "ℹ️ 未输入IP，跳过所有IP相关配置，继续执行。"
 else
-  if [ "$NEW_IP" == "$CURRENT_IP" ]; then
-    echo "ℹ️ 继续使用历史IP，不修改配置文件。"
-  else
-    sed -i '' "/^export $ENV_VAR=/d" "$ZSHRC"
-    echo "export $ENV_VAR=$NEW_IP" >> "$ZSHRC"
-    echo "✅ 已写入新IP到配置文件：$NEW_IP"
-  fi
+  # 只要有NEW_IP都写入一次配置文件
+  sed -i '' "/^export $ENV_VAR=/d" "$ZSHRC"
+  echo "export $ENV_VAR=$NEW_IP" >> "$ZSHRC"
+  echo "✅ 已写入IP到配置文件：$NEW_IP"
   # 备份原文件
   cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
 
