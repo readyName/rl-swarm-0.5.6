@@ -19,28 +19,28 @@ if [ -n "$CURRENT_IP" ]; then
   if [[ "$USE_LAST" == "" || "$USE_LAST" =~ ^[Yy]$ ]]; then
     NEW_IP="$CURRENT_IP"
   else
-    read -p "请输入新的 initial_peers IP: " NEW_IP
+    read -p "请输入新的 initial_peers IP（直接回车跳过IP配置）: " NEW_IP
   fi
 else
-  read -p "未检测到历史 IP，请输入 initial_peers IP: " NEW_IP
+  read -p "未检测到历史 IP，请输入 initial_peers IP（直接回车跳过IP配置）: " NEW_IP
 fi
 
-# 新增：如果用户未输入新IP且环境变量也没有历史IP，则跳过IP相关配置，继续执行
+# 新增：每次都将环境变量中的IP写入 ~/.zshrc，保证同步
+if [ -n "$CURRENT_IP" ]; then
+  sed -i '' "/^export $ENV_VAR=/d" "$ZSHRC"
+  echo "export $ENV_VAR=$CURRENT_IP" >> "$ZSHRC"
+fi
+
+# 继续后续逻辑
 if [[ -z "$NEW_IP" ]]; then
-  echo "ℹ️ 未输入IP，且环境变量无历史IP，跳过IP相关配置，继续执行。"
+  echo "ℹ️ 未输入IP，跳过所有IP相关配置，继续执行。"
 else
-  # 只有输入了新IP才进行后续IP相关操作
   if [ "$NEW_IP" == "$CURRENT_IP" ]; then
-    echo "ℹ️ 未输入新IP，继续使用历史IP，不修改配置文件。"
+    echo "ℹ️ 继续使用历史IP，不修改配置文件。"
   else
     # 写入 ~/.zshrc
-    if grep -q "^export $ENV_VAR=" "$ZSHRC"; then
-      # 替换
-      sed -i '' "s/^export $ENV_VAR=.*/export $ENV_VAR=$NEW_IP/" "$ZSHRC"
-    else
-      # 追加
-      echo "export $ENV_VAR=$NEW_IP" >> "$ZSHRC"
-    fi
+    sed -i '' "/^export $ENV_VAR=/d" "$ZSHRC"
+    echo "export $ENV_VAR=$NEW_IP" >> "$ZSHRC"
 
     # 备份原文件
     cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
