@@ -33,4 +33,8 @@ echo "🧹 停止并清理当前 Docker Compose 服务..."
 docker compose down || { echo "⚠️ docker compose down 执行失败，继续执行下一步..."; }
 
 echo "⚙️ 启动指定服务：node、redis、fluentbit"
-docker compose up node redis fluentbit
+while true; do
+  docker compose up node redis fluentbit && break
+  echo "⚠️ 服务启动失败，5秒后重试..."
+  sleep 5
+ done
