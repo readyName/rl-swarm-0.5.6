@@ -146,18 +146,14 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
       fi
     fi
 
-    # 3小时后首次查询合约参数和链上信息时，先检测并保存PeerID
-    if [ $FIRST_QUERY_DONE -eq 0 ] && [ $PEERID_QUERY_TIMER -ge $PEERID_QUERY_INTERVAL ]; then
+    # 每3小时检测一次PeerID并查询参数和链上信息
+    if [ $PEERID_QUERY_TIMER -ge $PEERID_QUERY_INTERVAL ]; then
       # 检测并保存PeerID
       if [ -f "$PEERID_LOG" ]; then
         PEER_ID=$(grep "Peer ID" "$PEERID_LOG" | sed -n 's/.*Peer ID \[\(.*\)\].*/\1/p' | tail -n1)
         if [ -n "$PEER_ID" ]; then
           echo "$PEER_ID" > "$PEERID_FILE"
           log "✅ 已检测并保存 Peer ID: $PEER_ID"
-          # 新增：将PeerID写入桌面文件
-          echo "==============================" >> ~/Desktop/peerid_info.txt
-          echo "检测时间: $(date '+%Y-%m-%d %H:%M:%S')" >> ~/Desktop/peerid_info.txt
-          echo "PeerID: $PEER_ID" >> ~/Desktop/peerid_info.txt
         else
           log "⏳ 未检测到 Peer ID，本轮跳过参数和链上查询..."
           continue
@@ -168,26 +164,6 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
       fi
       query_and_save_peerid_info "$PEER_ID"
       FIRST_QUERY_DONE=1
-      PEERID_QUERY_TIMER=0
-    fi
-
-    # 之后每3小时自动查询一次
-    if [ $FIRST_QUERY_DONE -eq 1 ] && [ $PEERID_QUERY_TIMER -ge $PEERID_QUERY_INTERVAL ]; then
-      # 检测并保存PeerID
-      if [ -f "$PEERID_LOG" ]; then
-        PEER_ID=$(grep "Peer ID" "$PEERID_LOG" | sed -n 's/.*Peer ID \[\(.*\)\].*/\1/p' | tail -n1)
-        if [ -n "$PEER_ID" ]; then
-          echo "$PEER_ID" > "$PEERID_FILE"
-          log "✅ 已检测并保存 Peer ID: $PEER_ID"
-        else
-          log "⏳ 未检测到 Peer ID，本轮跳过参数和链上查询..."
-          continue
-        fi
-      else
-        log "⏳ 未检测到 Peer ID 日志文件，本轮跳过参数和链上查询..."
-        continue
-      fi
-      query_and_save_peerid_info "$PEER_ID"
       PEERID_QUERY_TIMER=0
     fi
   done
