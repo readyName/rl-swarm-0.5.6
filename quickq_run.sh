@@ -87,9 +87,9 @@ check_quickq_status() {
 # VPN状态检测函数
 check_vpn_connection() {
     local TEST_URLS=(
-        "https://www.google.com"
-        "https://x.com"
-        "https://www.youtube.com"
+        "https://www.google.com/generate_204"
+        "https://www.youtube.com/generate_204"
+        "https://connectivitycheck.gstatic.com/generate_204"
     )
     local PING_TEST="8.8.8.8"
     local PING_TIMEOUT=6
@@ -97,32 +97,37 @@ check_vpn_connection() {
     local MAX_RETRIES=3
     local retry_count=0
 
+    # 检查 QuickQ VPN 状态（假设 check_quickq_status 是外部定义的函数）
     if check_quickq_status; then
+        echo "[$(date +"%T")] VPN检测：QuickQ VPN 已连接"
+        last_vpn_status="connected"
         return 0
     fi
 
-    # 原逻辑：if ! ping -c 2 -W $PING_TIMEOUT $PING_TEST &> /dev/null; then
-    # 新逻辑：只要能 ping 通就检测通过
-    if ! ping -c 1 $PING_TEST &> /dev/null; then
+    # 基础网络连通性测试（单次 ping）
+    if ! ping -c 1 -W $PING_TIMEOUT $PING_TEST &> /dev/null; then
         echo "[$(date +"%T")] 基础网络连通性测试失败（ping $PING_TEST）"
         last_vpn_status="disconnected"
         return 1
     fi
 
+    # 轻量级 HTTP 204 测试
     while [ $retry_count -lt $MAX_RETRIES ]; do
         for url in "${TEST_URLS[@]}"; do
-            if curl --silent --head --fail --max-time $CURL_TIMEOUT "$url" &> /dev/null; then
-                echo "[$(date +"%T")] VPN检测：可通过 $url"
+            local http_code
+            http_code=$(curl --silent --head --fail --max-time $CURL_TIMEOUT -w "%{http_code}" -o /dev/null "$url")
+            if [ "$http_code" -eq 204 ]; then
+                echo "[$(date +"%T")] VPN检测：通过 $url (HTTP 204)"
                 last_vpn_status="connected"
                 return 0
             fi
         done
         ((retry_count++))
-        echo "[$(date +"%T")] VPN检测失败，重试 $retry_count/$MAX_RETRIES"
+        echo "[$(date +"%T")] VPN检测失败（尝试 $retry_count/$MAX_RETRIES）"
         sleep 2
     done
 
-    echo "[$(date +"%T")] VPN检测：所有测试站点均不可达"
+    echo "[$(date +"%T")] VPN检测：所有轻量级端点均不可达"
     last_vpn_status="disconnected"
     return 1
 }
