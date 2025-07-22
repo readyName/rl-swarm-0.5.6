@@ -89,7 +89,6 @@ check_vpn_connection() {
     local TEST_URLS=(
         "https://www.google.com/generate_204"
         "https://www.youtube.com/generate_204"
-        "https://connectivitycheck.gstatic.com/generate_204"
     )
     local PING_TEST="8.8.8.8"
     local PING_TIMEOUT=6
