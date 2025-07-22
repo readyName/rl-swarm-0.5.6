@@ -6,7 +6,6 @@ export WANDB_DISABLED=true
 export WANDB_SILENT=true
 export WANDB_CONSOLE=off
 
-
 MAX_RETRIES=1000000
 WARNING_THRESHOLD=10
 RETRY_COUNT=0
@@ -76,7 +75,6 @@ query_and_save_peerid_info() {
   log "✅ 已尝试查询 Peer ID 合约参数，结果已追加写入桌面: $desktop_path"
 }
 
-
 # ====== 🔁 主循环：启动和监控 RL Swarm ======
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   log "🚀 第 $((RETRY_COUNT + 1)) 次尝试：启动 RL Swarm..."
@@ -102,9 +100,9 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   PY_PID=$(pgrep -P $RL_PID -f python | head -n 1)
 
   if [ -z "$PY_PID" ]; then
-    log "⚠️ No Python subprocess found. Likely failed to start."
+    log "⚠️ 未找到 Python 子进程，将监控 RL_PID: $RL_PID 替代 PY_PID"
   else
-    log "✅ Python subprocess detected. PID: $PY_PID"
+    log "✅ 检测到 Python 子进程，PID: $PY_PID"
   fi
 
   # ====== 检测并保存 Peer ID ======
@@ -112,30 +110,32 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   PEERID_FILE="peerid.txt"
   # 启动时不再主动检测和保存 PeerID，延后到定时任务中
 
-  # ✅ 监控子进程
-  DISK_LIMIT_GB=20 # 你设定的磁盘阈值（单位：GB）
-  MEM_CHECK_INTERVAL=600  # 检查间隔（秒），10分钟
-
+  # ✅ 监控进程（根据 PY_PID 是否存在选择 RL_PID 或 PY_PID）
+  DISK_LIMIT_GB=20
+  MEM_CHECK_INTERVAL=600
   MEM_CHECK_TIMER=0
-  PEERID_LOG="logs/swarm_launcher.log"
-  PEERID_FILE="peerid.txt"
-  PEER_ID_FOUND=0
-  PEERID_QUERY_INTERVAL=10800  # 3小时=10800秒
+  PEERID_QUERY_INTERVAL=10800
   PEERID_QUERY_TIMER=0
   FIRST_QUERY_DONE=0
 
-  while [ -n "$PY_PID" ] && kill -0 "$PY_PID" >/dev/null 2>&1; do
+  # 如果未找到 PY_PID，使用 RL_PID 进行监控
+  if [ -z "$PY_PID" ]; then
+    MONITOR_PID=$RL_PID
+    log "🔍 开始监控 RL_PID: $MONITOR_PID"
+  else
+    MONITOR_PID=$PY_PID
+    log "🔍 开始监控 PY_PID: $MONITOR_PID"
+  fi
+
+  while kill -0 "$MONITOR_PID" >/dev/null 2>&1; do
     sleep 2
     MEM_CHECK_TIMER=$((MEM_CHECK_TIMER + 2))
     PEERID_QUERY_TIMER=$((PEERID_QUERY_TIMER + 2))
     if [ $MEM_CHECK_TIMER -ge $MEM_CHECK_INTERVAL ]; then
       MEM_CHECK_TIMER=0
-      # 检测磁盘空间，适配 macOS 和 Ubuntu
       if [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS
         FREE_GB=$(df -g / | awk 'NR==2 {print $4}')
       else
-        # Linux/Ubuntu
         FREE_GB=$(df -BG / | awk 'NR==2 {gsub(/G/,"",$4); print $4}')
       fi
       log "🔍 检测到磁盘剩余空间 ${FREE_GB}GB"
@@ -146,9 +146,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
       fi
     fi
 
-    # 每3小时检测一次PeerID并查询参数和链上信息
     if [ $PEERID_QUERY_TIMER -ge $PEERID_QUERY_INTERVAL ]; then
-      # 检测并保存PeerID
       if [ -f "$PEERID_LOG" ]; then
         PEER_ID=$(grep "Peer ID" "$PEERID_LOG" | sed -n 's/.*Peer ID \[\(.*\)\].*/\1/p' | tail -n1)
         if [ -n "$PEER_ID" ]; then
@@ -169,8 +167,8 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   done
 
   # ✅ 清理并准备重启
+  log "🚨 监控进程 PID: $MONITOR_PID 已终止，进入重启流程"
   cleanup restart
-
   RETRY_COUNT=$((RETRY_COUNT + 1))
 
   if [ $RETRY_COUNT -eq $WARNING_THRESHOLD ]; then
@@ -180,5 +178,4 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   sleep 2
 done
 
-# ❌ 达到最大重试次数
 log "🛑 已达到最大重试次数 ($MAX_RETRIES)，程序退出"
