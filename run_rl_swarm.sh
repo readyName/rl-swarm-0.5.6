@@ -192,6 +192,7 @@ fi
 echo_green ">> Getting requirements..."
 pip install --upgrade pip > /dev/null
 pip install gensyn-genrl==0.1.4 > /dev/null
+#pip install -e ./genrl > /dev/null
 pip install reasoning-gym>=0.1.20 > /dev/null
 pip install trl > /dev/null
 pip install hivemind@git+https://github.com/gensyn-ai/hivemind@639c964a8019de63135a2594663b5bec8e5356dd > /dev/null
