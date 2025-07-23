@@ -18,53 +18,115 @@ else
     exit 1
 fi
 
-# 坐标参数说明：
-# 连接操作坐标
+# 坐标参数
 LEFT_X=1520
-DROP_DOWN_BUTTON_X=200  # 下拉按钮X  1720在右边 200在左边
-DROP_DOWN_BUTTON_Y=430   # 下拉按钮Y
-CONNECT_BUTTON_X=200    # 连接按钮X。1720在右边 200在左边
-CONNECT_BUTTON_Y=260     # 连接按钮Y
+DROP_DOWN_BUTTON_X=200
+DROP_DOWN_BUTTON_Y=430
+CONNECT_BUTTON_X=200
+CONNECT_BUTTON_Y=260
+SETTINGS_BUTTON_X=349
+SETTINGS_BUTTON_Y=165
 
-# 初始化操作坐标
-SETTINGS_BUTTON_X=349   # 设置按钮X   1869在右边。349在左边
-SETTINGS_BUTTON_Y=165    # 设置按钮Y
+# ALCHEMY_URL 和主机名
+ALCHEMY_HOST="gensyn-testnet.g.alchemy.com"
+ALCHEMY_URL="https://gensyn-testnet.g.alchemy.com/public"
+
+# 检查 Homebrew 是否安装
+if ! command -v brew &> /dev/null; then
+    echo "[$(date +"%T")] 错误：未找到 Homebrew，请先安装 Homebrew (https://brew.sh)"
+    exit 1
+fi
 
 # 检查 cliclick 依赖
 if ! command -v cliclick &> /dev/null; then
-    echo "正在通过Homebrew安装cliclick..."
-    if ! command -v brew &> /dev/null; then
-        echo "错误：请先安装Homebrew (https://brew.sh)"
+    echo "[$(date +"%T")] 正在通过 Homebrew 安装 cliclick..."
+    brew install cliclick
+    if [ $? -ne 0 ]; then
+        echo "[$(date +"%T")] 错误：cliclick 安装失败"
         exit 1
     fi
-    brew install cliclick
-    
-    echo "[$(date +"%T")] 依赖安装完成，正在执行一次性权限触发操作..."
-    
-    # 启动应用
+    echo "[$(date +"%T")] cliclick 安装完成"
+fi
+
+# 检查 nc（netcat）依赖
+if ! command -v nc &> /dev/null; then
+    echo "[$(date +"%T")] 正在通过 Homebrew 安装 netcat..."
+    brew install netcat
+    if [ $? -ne 0 ]; then
+        echo "[$(date +"%T")] 错误：netcat 安装失败"
+        exit 1
+    fi
+    echo "[$(date +"%T")] netcat 安装完成"
+else
+    echo "[$(date +"%T")] 检测到 netcat 已安装，跳过安装"
+fi
+
+# 一次性权限触发操作
+if [ ! -f "/tmp/quickq_permissions_triggered" ]; then
+    echo "[$(date +"%T")] 正在执行一次性权限触发操作..."
     open "$APP_PATH"
-    sleep 5  # 等待应用启动
-    
-    # 执行窗口调整和点击
+    sleep 5
     osascript -e "tell application \"$APP_NAME\" to activate"
     sleep 1
-    
-    # 窗口校准函数调用
     adjust_window
-    
-    # 点击设置按钮（触发权限请求）
     cliclick c:${SETTINGS_BUTTON_X},${SETTINGS_BUTTON_Y}
     echo "[$(date +"%T")] 已触发点击事件，请检查系统权限请求"
     echo "[$(date +"%T")] 等待10秒以便您处理权限对话框..."
     sleep 10
-    
-    # 安全终止应用（因为主循环会重新启动它）
     pkill -9 -f "$APP_NAME"
+    touch "/tmp/quickq_permissions_triggered"
+    echo "[$(date +"%T")] 权限触发完成，标记已设置"
 fi
 
-# 以下是原有脚本内容，部分优化 ▼▼▼
-reconnect_count=0
-last_vpn_status="disconnected"
+# 网络连通性检测函数
+check_network_connectivity() {
+    local PING_TIMEOUT=6
+    local CURL_TIMEOUT=8
+    local NC_TIMEOUT=5
+    local success=false
+
+    # 1. DNS 解析检查
+    if host "$ALCHEMY_HOST" &> /dev/null; then
+        echo "[$(date +"%T")] 网络检测：DNS 解析 $ALCHEMY_HOST 成功"
+    else
+        echo "[$(date +"%T")] 网络检测：DNS 解析 $ALCHEMY_HOST 失败"
+        return 1
+    fi
+
+    # 2. HTTP/HTTPS 请求检查
+    local http_code
+    http_code=$(curl --silent --head --fail --max-time $CURL_TIMEOUT -w "%{http_code}" -o /dev/null "$ALCHEMY_URL")
+    if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 204 ]; then
+        echo "[$(date +"%T")] 网络检测：HTTP 请求 $ALCHEMY_URL 成功 (HTTP $http_code)"
+        success=true
+    else
+        echo "[$(date +"%T")] 网络检测：HTTP 请求 $ALCHEMY_URL 失败 (HTTP $http_code)"
+    fi
+
+    # 3. TCP 连接检查（443 端口）
+    if nc -w $NC_TIMEOUT -z $ALCHEMY_HOST 443 &> /dev/null; then
+        echo "[$(date +"%T")] 网络检测：TCP 连接 $ALCHEMY_HOST:443 成功"
+        success=true
+    else
+        echo "[$(date +"%T")] 网络检测：TCP 连接 $ALCHEMY_HOST:443 失败"
+    fi
+
+    # 4. Ping 检查（作为辅助，ICMP 可能被禁用）
+    if ping -c 1 -W $PING_TIMEOUT $ALCHEMY_HOST &> /dev/null; then
+        echo "[$(date +"%T")] 网络检测：Ping $ALCHEMY_HOST 成功"
+        success=true
+    else
+        echo "[$(date +"%T")] 网络检测：Ping $ALCHEMY_HOST 失败"
+    fi
+
+    # 只要任一检查成功，就认为网络连通
+    if $success; then
+        return 0
+    else
+        echo "[$(date +"%T")] 网络检测：所有检查均失败"
+        return 1
+    fi
+}
 
 # QuickQ VPN 状态检测函数
 check_quickq_status() {
@@ -84,7 +146,7 @@ check_quickq_status() {
     fi
 }
 
-# VPN状态检测函数
+# VPN 状态检测函数
 check_vpn_connection() {
     local TEST_URLS=(
         "https://www.google.com/generate_204"
@@ -96,14 +158,20 @@ check_vpn_connection() {
     local MAX_RETRIES=3
     local retry_count=0
 
-    # 检查 QuickQ VPN 状态（假设 check_quickq_status 是外部定义的函数）
+    # 检查网络连通性
+    if ! check_network_connectivity; then
+        echo "[$(date +"%T")] 网络连通性测试失败"
+        return 1
+    fi
+
+    # 检查 QuickQ VPN 状态
     if check_quickq_status; then
         echo "[$(date +"%T")] VPN检测：QuickQ VPN 已连接"
         last_vpn_status="connected"
         return 0
     fi
 
-    # 基础网络连通性测试（单次 ping）
+    # 基础网络连通性测试（ping 8.8.8.8）
     if ! ping -c 1 -W $PING_TIMEOUT $PING_TEST &> /dev/null; then
         echo "[$(date +"%T")] 基础网络连通性测试失败（ping $PING_TEST）"
         last_vpn_status="disconnected"
@@ -181,6 +249,10 @@ terminate_app() {
     echo "[$(date +"%T")] 正在停止应用..."
     pkill -9 -f "$APP_NAME" && echo "[$(date +"%T")] 已终止残留进程"
 }
+
+# 主循环
+reconnect_count=0
+last_vpn_status="disconnected"
 
 while :; do
     if pgrep -f "$APP_NAME" &> /dev/null; then
