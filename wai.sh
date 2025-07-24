@@ -97,55 +97,49 @@ configure_env() {
     fi
 }
 
+# 通用超时函数（替代timeout/gtimeout）
+run_with_timeout() {
+  local duration=$1
+  shift
+  "$@" &
+  cmd_pid=$!
+  ( sleep "$duration" && kill -9 $cmd_pid 2>/dev/null ) &
+  watcher_pid=$!
+  wait $cmd_pid 2>/dev/null
+  status=$?
+  kill -9 $watcher_pid 2>/dev/null
+  return $status
+}
+
 run_wai_worker() {
     WAI_CMD="$HOME/.local/bin/wai"
     RETRY=1
-
-    log "启动 WAI Worker..."
-
+    log "开始运行 WAI Worker..."
     while true; do
         log "🔁 准备开始新一轮挖矿..."
-
+        log "🧹 清理旧进程..."
         if pgrep -f "[p]ython -m model.main" >/dev/null; then
-            pkill -9 -f "[p]ython -m model.main"
-            log "✅ 清理旧进程"
+            pkill -9 -f "[p]ython -m model.main" 2>/dev/null
+            log "✅ 旧进程清理完成"
         else
-            log "✅ 无旧进程"
+            log "✅ 无旧进程需要清理"
         fi
-
-        log "🚀 启动 Worker，运行 5 分钟..."
-        env POSTHOG_DISABLED=true "$WAI_CMD" run &
-        WAI_PID=$!
-        sleep 300 &
-        SLEEP_PID=$!
-
-        elapsed=0
-        while [ $elapsed -lt 300 ]; do
-            if ! kill -0 $WAI_PID 2>/dev/null; then
-                wait $WAI_PID
-                EXIT_CODE=$?
-                break
-            fi
-            sleep 1
-            ((elapsed++))
-        done
-
-        if kill -0 $WAI_PID 2>/dev/null; then
-            log "⏰ 超时，重启 Worker..."
-            kill -9 $WAI_PID
+        log "✅ 启动 Worker（限时5分钟）..."
+        run_with_timeout 300 env POSTHOG_DISABLED=true "$WAI_CMD" run
+        EXIT_CODE=$?
+        if [ $EXIT_CODE -eq 124 ]; then
+            warn "⏰ Worker 已运行5分钟，强制重启..."
             RETRY=1
-            sleep 10
+            sleep 2
         elif [ $EXIT_CODE -ne 0 ]; then
-            warn "⚠️ Worker 异常退出（代码 $EXIT_CODE），10 秒后重试..."
+            warn "⚠️ Worker 异常退出（退出码 $EXIT_CODE），等待 10 秒后重试..."
             sleep 10
             RETRY=$(( RETRY < 8 ? RETRY+1 : 8 ))
         else
-            log "✅ 正常退出，重置重试计数"
+            log "✅ Worker 正常退出，重置重试计数"
             RETRY=1
             sleep 10
         fi
-
-        kill -0 $SLEEP_PID 2>/dev/null && kill -9 $SLEEP_PID
     done
 }
 
