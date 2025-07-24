@@ -196,6 +196,16 @@ pip install reasoning-gym>=0.1.20 > /dev/null
 pip install trl > /dev/null
 pip install hivemind@git+https://github.com/gensyn-ai/hivemind@639c964a8019de63135a2594663b5bec8e5356dd > /dev/null
 
+# 安装 web3，优先用本地whl文件
+if ls ./web3/web3-*.whl 1> /dev/null 2>&1; then
+  echo_green ">> 检测到本地 web3 whl 文件，使用离线安装..."
+  pip install --no-index --find-links=./web3 web3 > /dev/null
+else
+  echo_green ">> 未检测到本地 web3 whl 文件，使用在线安装..."
+  pip install web3 > /dev/null
+fi
+
+
 
 if [ ! -d "$ROOT/configs" ]; then
     mkdir "$ROOT/configs"
