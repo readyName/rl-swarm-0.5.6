@@ -146,7 +146,6 @@ run_wai_worker() {
 main() {
     check_system
     install_missing_dependencies
-    install_wai_cli
     configure_env
     log "✅ 所有准备就绪，启动 Worker..."
     run_wai_worker
