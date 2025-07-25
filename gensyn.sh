@@ -12,25 +12,6 @@ else
   CURRENT_IP=""
 fi
 
-# ==== 自动配置 sudo 免密（仅限 /sbin/route）====
-USERNAME=$(whoami)
-SUDOERS_FILE="/etc/sudoers.d/rlswarm_route_nopasswd"
-ROUTE_CMD="/sbin/route"
-if [ ! -f "$SUDOERS_FILE" ] || ! grep -q "$USERNAME ALL=(ALL) NOPASSWD: $ROUTE_CMD" "$SUDOERS_FILE" 2>/dev/null; then
-  echo "$USERNAME ALL=(ALL) NOPASSWD: $ROUTE_CMD" | sudo tee "$SUDOERS_FILE" >/dev/null
-  sudo chmod 440 "$SUDOERS_FILE"
-  # 检查写入是否成功
-  if grep -q "$USERNAME ALL=(ALL) NOPASSWD: $ROUTE_CMD" "$SUDOERS_FILE" 2>/dev/null; then
-    echo "✅ 已为 $USERNAME 配置 sudo 免密: $ROUTE_CMD"
-    echo "⚠️ 免密配置已生效，脚本将自动重启以应用新权限..."
-    sleep 1
-    exec "$0" "$@"
-  else
-    echo "❌ 免密配置写入失败，请手动检查 $SUDOERS_FILE"
-    exit 1
-  fi
-fi
-
 # 交互提示（10秒超时）
 if [ -n "$CURRENT_IP" ]; then
   echo -n "检测到上次使用的 IP: $CURRENT_IP，是否继续使用？(Y/n, 10秒后默认Y): "
