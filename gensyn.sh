@@ -16,10 +16,10 @@ fi
 USERNAME=$(whoami)
 SUDOERS_FILE="/etc/sudoers.d/rlswarm_route_nopasswd"
 ROUTE_CMD="/sbin/route"
-if sudo -n true 2>/dev/null && ! sudo grep -q "$USERNAME ALL=(ALL) NOPASSWD: $ROUTE_CMD" "$SUDOERS_FILE" 2>/dev/null; then
-echo "$USERNAME ALL=(ALL) NOPASSWD: $ROUTE_CMD" | sudo tee "$SUDOERS_FILE" >/dev/null
-sudo chmod 440 "$SUDOERS_FILE"
-echo "✅ 已为 $USERNAME 配置 sudo 免密: $ROUTE_CMD"
+if ! sudo grep -q "$USERNAME ALL=(ALL) NOPASSWD: $ROUTE_CMD" "$SUDOERS_FILE" 2>/dev/null; then
+  echo "$USERNAME ALL=(ALL) NOPASSWD: $ROUTE_CMD" | sudo tee "$SUDOERS_FILE" >/dev/null
+  sudo chmod 440 "$SUDOERS_FILE"
+  echo "✅ 已为 $USERNAME 配置 sudo 免密: $ROUTE_CMD"
 fi
 
 # 交互提示（10秒超时）
