@@ -55,29 +55,34 @@ else
   echo "✅ 已将 initial_peers 的 IP 全部替换为：$NEW_IP"
   echo "原始文件已备份为：${CONFIG_FILE}.bak"
 
+
+    # ==== 自动配置 sudo 免密（仅限 /sbin/route）====
+    USERNAME=$(whoami)
+    SUDOERS_FILE="/etc/sudoers.d/rlswarm_route_nopasswd"
+    ROUTE_CMD="/sbin/route"
+    if sudo -n true 2>/dev/null && ! sudo grep -q "$USERNAME ALL=(ALL) NOPASSWD: $ROUTE_CMD" "$SUDOERS_FILE" 2>/dev/null; then
+    echo "$USERNAME ALL=(ALL) NOPASSWD: $ROUTE_CMD" | sudo tee "$SUDOERS_FILE" >/dev/null
+    sudo chmod 440 "$SUDOERS_FILE"
+    echo "✅ 已为 $USERNAME 配置 sudo 免密: $ROUTE_CMD"
+    fi
+
   # 添加路由让该 IP 直连本地网关（不走 VPN）
   if [[ "$OSTYPE" == "darwin"* || "$OSTYPE" == "linux"* ]]; then
     GATEWAY=$(netstat -nr | grep '^default' | awk '{print $2}' | head -n1)
-    # 检查路由是否已存在
+    # 无论路由是否存在，都强制添加/覆盖
     if [[ "$OSTYPE" == "darwin"* ]]; then
       # macOS
-      if netstat -nr | grep -q "$NEW_IP"; then
-        echo "🌐 路由已存在，跳过添加：$NEW_IP"
-      else
-        sudo route -n add $NEW_IP $GATEWAY 2>/dev/null || sudo route add -host $NEW_IP $GATEWAY 2>/dev/null
-        echo "🌐 已为 $NEW_IP 添加直连路由（不走 VPN）"
-      fi
+      sudo route -n add -host $NEW_IP $GATEWAY 2>/dev/null || sudo route change -host $NEW_IP $GATEWAY 2>/dev/null
+      echo "🌐 已为 $NEW_IP 强制添加直连路由（不走 VPN），网关：$GATEWAY"
     else
       # Linux
-      if ip route show | grep -q "$NEW_IP"; then
-        echo "🌐 路由已存在，跳过添加：$NEW_IP"
-      else
-        sudo route add -host $NEW_IP $GATEWAY 2>/dev/null
-        echo "🌐 已为 $NEW_IP 添加直连路由（不走 VPN）"
-      fi
+      sudo route add -host $NEW_IP $GATEWAY 2>/dev/null || sudo route change -host $NEW_IP $GATEWAY 2>/dev/null
+      echo "🌐 已为 $NEW_IP 强制添加直连路由（不走 VPN），网关：$GATEWAY"
     fi
   fi
 fi
+
+
 
 # 切换到脚本所在目录（假设 go.sh 在项目根目录）
 cd "$(dirname "$0")"
