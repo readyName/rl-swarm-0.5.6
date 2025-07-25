@@ -20,6 +20,8 @@ if ! sudo grep -q "$USERNAME ALL=(ALL) NOPASSWD: $ROUTE_CMD" "$SUDOERS_FILE" 2>/
   echo "$USERNAME ALL=(ALL) NOPASSWD: $ROUTE_CMD" | sudo tee "$SUDOERS_FILE" >/dev/null
   sudo chmod 440 "$SUDOERS_FILE"
   echo "✅ 已为 $USERNAME 配置 sudo 免密: $ROUTE_CMD"
+  echo "⚠️ 免密配置已生效，脚本将自动重启以应用新权限..."
+  exec "$0" "$@"
 fi
 
 # 交互提示（10秒超时）
