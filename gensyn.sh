@@ -81,11 +81,6 @@ cd "$(dirname "$0")"
 if [ -d ".venv" ]; then
   echo "🔗 正在激活虚拟环境 .venv..."
   source .venv/bin/activate
-  # 检查并安装web3
-  if ! python -c "import web3" 2>/dev/null; then
-    echo "⚙️ 正在为虚拟环境安装 web3..."
-    pip install web3
-  fi
 else
   echo "⚠️ 未找到 .venv 虚拟环境，正在自动创建..."
   if command -v python3.12 >/dev/null 2>&1; then
