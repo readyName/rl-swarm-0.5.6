@@ -120,9 +120,16 @@ run_wai_worker() {
         log "🧹 清理旧进程..."
         if pgrep -f "[p]ython -m model.main" >/dev/null; then
             pkill -9 -f "[p]ython -m model.main" 2>/dev/null
-            log "✅ 旧进程清理完成"
+            log "✅ 旧python model.main进程清理完成"
         else
-            log "✅ 无旧进程需要清理"
+            log "✅ 无旧python model.main进程需要清理"
+        fi
+        # 新增wai run进程清理
+        if pgrep -f "wai run" >/dev/null; then
+            pkill -9 -f "wai run" 2>/dev/null
+            log "✅ 旧wai run进程清理完成"
+        else
+            log "✅ 无wai run进程需要清理"
         fi
         log "✅ 启动 Worker（限时5分钟）..."
         run_with_timeout 300 env POSTHOG_DISABLED=true "$WAI_CMD" run
