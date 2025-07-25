@@ -12,6 +12,16 @@ else
   CURRENT_IP=""
 fi
 
+# ==== 自动配置 sudo 免密（仅限 /sbin/route）====
+USERNAME=$(whoami)
+SUDOERS_FILE="/etc/sudoers.d/rlswarm_route_nopasswd"
+ROUTE_CMD="/sbin/route"
+if sudo -n true 2>/dev/null && ! sudo grep -q "$USERNAME ALL=(ALL) NOPASSWD: $ROUTE_CMD" "$SUDOERS_FILE" 2>/dev/null; then
+echo "$USERNAME ALL=(ALL) NOPASSWD: $ROUTE_CMD" | sudo tee "$SUDOERS_FILE" >/dev/null
+sudo chmod 440 "$SUDOERS_FILE"
+echo "✅ 已为 $USERNAME 配置 sudo 免密: $ROUTE_CMD"
+fi
+
 # 交互提示（10秒超时）
 if [ -n "$CURRENT_IP" ]; then
   echo -n "检测到上次使用的 IP: $CURRENT_IP，是否继续使用？(Y/n, 10秒后默认Y): "
@@ -55,16 +65,6 @@ else
   echo "✅ 已将 initial_peers 的 IP 全部替换为：$NEW_IP"
   echo "原始文件已备份为：${CONFIG_FILE}.bak"
 
-
-    # ==== 自动配置 sudo 免密（仅限 /sbin/route）====
-    USERNAME=$(whoami)
-    SUDOERS_FILE="/etc/sudoers.d/rlswarm_route_nopasswd"
-    ROUTE_CMD="/sbin/route"
-    if sudo -n true 2>/dev/null && ! sudo grep -q "$USERNAME ALL=(ALL) NOPASSWD: $ROUTE_CMD" "$SUDOERS_FILE" 2>/dev/null; then
-    echo "$USERNAME ALL=(ALL) NOPASSWD: $ROUTE_CMD" | sudo tee "$SUDOERS_FILE" >/dev/null
-    sudo chmod 440 "$SUDOERS_FILE"
-    echo "✅ 已为 $USERNAME 配置 sudo 免密: $ROUTE_CMD"
-    fi
 
   # 添加路由让该 IP 直连本地网关（不走 VPN）
   if [[ "$OSTYPE" == "darwin"* || "$OSTYPE" == "linux"* ]]; then
