@@ -206,7 +206,10 @@ cleanup_exit() {
     log "${GREEN}未找到 nexus_node screen 会话，无需清理。${NC}"
   fi
   # 查找 nexus-network 和 nexus-cli 进程
-  PIDS=$(pgrep -f "nexus-network start --node-id\|nexus-cli start --node-id" | tr '\n' ' ' | xargs echo -n)
+  log "${BLUE}正在查找 Nexus 进程...${NC}"
+  # 简化查找逻辑，只查找进程名
+  PIDS=$(pgrep -f "nexus-cli\|nexus-network" | tr '\n' ' ' | xargs echo -n)
+  log "${BLUE}pgrep 找到的进程: '$PIDS'${NC}"
   if [[ -n "$PIDS" ]]; then
     for pid in $PIDS; do
       if ps -p "$pid" > /dev/null 2>&1; then
@@ -231,7 +234,10 @@ cleanup_restart() {
     log "${GREEN}未找到 nexus_node screen 会话，无需清理。${NC}"
   fi
   # 查找 nexus-network 和 nexus-cli 进程
-  PIDS=$(pgrep -f "nexus-network start --node-id\|nexus-cli start --node-id" | tr '\n' ' ' | xargs echo -n)
+  log "${BLUE}正在查找 Nexus 进程...${NC}"
+  # 简化查找逻辑，只查找进程名
+  PIDS=$(pgrep -f "nexus-cli\|nexus-network" | tr '\n' ' ' | xargs echo -n)
+  log "${BLUE}pgrep 找到的进程: '$PIDS'${NC}"
   if [[ -n "$PIDS" ]]; then
     for pid in $PIDS; do
       if ps -p "$pid" > /dev/null 2>&1; then
