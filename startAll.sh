@@ -20,7 +20,7 @@ EOF
 sleep 2
 
 # 2. 启动VPN（新终端窗口，放在最左下角使底部与nexus对齐，长度1/2，宽度2/3）
-osascript -e 'tell app "Terminal" to do script "~/rl-swarm-0.5.3/quickq_run.sh"'
+osascript -e 'tell app "Terminal" to do script "cd ~/rl-swarm && ./quickq_run.sh"'
 echo "✅ VPN已启动，等待2秒后启动Docker..."
 sleep 2
 
@@ -82,22 +82,22 @@ until docker info >/dev/null 2>&1; do sleep 1; done
 sleep 30  # 额外等待确保完全启动
 
 # 4. 启动gensyn（上层左侧，向右偏移半个身位）
-osascript -e 'tell app "Terminal" to do script "until docker info >/dev/null 2>&1; do sleep 1; done && ~/rl-swarm-0.5.3/gensyn.sh"'
+osascript -e 'tell app "Terminal" to do script "until docker info >/dev/null 2>&1; do sleep 1; done && cd ~/rl-swarm && ./gensyn_cli.sh"'
 sleep 1
 arrange_window "gensyn" $((x1+upper_item_width/2)) $y1 $upper_item_width $upper_height
 
 # 5. 启动wai（上层右侧，向右偏移半个身位，宽度缩小1/2，高度不变）
-osascript -e 'tell app "Terminal" to do script "~/rl-swarm-0.5.3/wai.sh"'
+osascript -e 'tell app "Terminal" to do script "cd ~/rl-swarm && ./wai.sh"'
 sleep 1
 arrange_window "wai" $((x1+upper_item_width+spacing+upper_item_width/2)) $y1 $wai_width $wai_height
 
 # 6. 启动nexus（下层中间，高度减小30px，向下移动5px）
-osascript -e 'tell app "Terminal" to do script "~/rl-swarm-0.5.3/nexus.sh"'
+osascript -e 'tell app "Terminal" to do script "cd ~/rl-swarm && ./nexus.sh"'
 sleep 1
 arrange_window "nexus" $((x1+quickq_width+spacing)) $nexus_ritual_y $lower_item_width $nexus_ritual_height
 
 # 7. 启动Ritual（下层右侧，高度减小30px，向下移动5px）
-osascript -e 'tell app "Terminal" to do script "~/rl-swarm-0.5.3/ritual.sh"'
+osascript -e 'tell app "Terminal" to do script "cd ~/rl-swarm && ./ritual.sh"'
 sleep 1
 arrange_window "Ritual" $((x1+quickq_width+lower_item_width+2*spacing)) $nexus_ritual_y $lower_item_width $nexus_ritual_height
 
