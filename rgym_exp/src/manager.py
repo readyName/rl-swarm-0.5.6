@@ -39,7 +39,6 @@ class SwarmGameManager(BaseGameManager, DefaultGameManagerMixin):
         log_dir: str = "logs",
         hf_token: str | None = None,
         hf_push_frequency: int = 20,
-        submit_frequency: int = 36,
         **kwargs,
     ):
 
@@ -80,7 +79,6 @@ class SwarmGameManager(BaseGameManager, DefaultGameManagerMixin):
         self.communication.step_ = (
             self.state.round
         )  # initialize communication module to contract's round
-        self.submit_frequency = submit_frequency
 
         # enable push to HF if token was provided
         self.hf_token = hf_token
@@ -107,6 +105,9 @@ class SwarmGameManager(BaseGameManager, DefaultGameManagerMixin):
             f.write(get_system_info())
 
         self.batched_signals = 0.0
+        self.time_since_submit = time.time() #seconds
+        self.submit_period = 3.0 #hours
+        self.submitted_this_round = False
 
     def _get_total_rewards_by_agent(self):
         rewards_by_agent = defaultdict(int)
@@ -121,24 +122,41 @@ class SwarmGameManager(BaseGameManager, DefaultGameManagerMixin):
 
         return rewards_by_agent
 
-    def _hook_after_rewards_updated(self):
-        signal_by_agent = self._get_total_rewards_by_agent()
+    def _get_my_rewards(self, signal_by_agent):
         my_signal = signal_by_agent[self.peer_id]
         my_signal = (my_signal + 1) * (my_signal > 0) + my_signal * (
             my_signal <= 0
         )
-        self.batched_signals += my_signal
-        
-        if self.state.round % self.submit_frequency == 0:
+        return my_signal
+
+    def _try_submit_to_chain(self, signal_by_agent):
+        elapsed_time_hours = (time.time() - self.time_since_submit) / 3600
+        if elapsed_time_hours > self.submit_period:
             self.coordinator.submit_reward(
                 self.state.round, 0, int(self.batched_signals), self.peer_id
             )
             self.batched_signals = 0.0
             max_agent, max_signal = max(signal_by_agent.items(), key=lambda x: x[1])
             self.coordinator.submit_winners(self.state.round, [max_agent], self.peer_id)
+            self.time_since_submit = time.time()
+            self.submitted_this_round = True
+
+
+    def _hook_after_rewards_updated(self):
+        signal_by_agent = self._get_total_rewards_by_agent()
+        self.batched_signals += self._get_my_rewards(signal_by_agent)
+        self._try_submit_to_chain(signal_by_agent)
 
     def _hook_after_round_advanced(self):
         self._save_to_hf()
+
+        # Try to submit to chain again if necessary, but don't update our signal twice
+        if not self.submitted_this_round:
+            signal_by_agent = self._get_total_rewards_by_agent()
+            self._try_submit_to_chain(signal_by_agent)
+        
+        # Reset flag for next round
+        self.submitted_this_round = False
 
         # Block until swarm round advances
         self.agent_block()
