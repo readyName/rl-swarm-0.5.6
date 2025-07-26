@@ -287,7 +287,12 @@ install_nexus_cli() {
     echo "export PATH=\"$HOME/.cargo/bin:\$PATH\"" > "$CONFIG_FILE"
     log "${YELLOW}未检测到 $CONFIG_FILE，已自动生成并写入 PATH 变量。${NC}"
   fi
+  # 重新加载配置文件以确保环境变量生效
   source "$CONFIG_FILE" 2>/dev/null && log "${GREEN}已自动加载 $CONFIG_FILE 环境变量。${NC}" || log "${YELLOW}未能自动加载 $CONFIG_FILE，请手动执行 source $CONFIG_FILE。${NC}"
+  # 额外加载 .zshrc 确保所有环境变量生效
+  if [[ -f "$HOME/.zshrc" ]]; then
+    source "$HOME/.zshrc" 2>/dev/null && log "${GREEN}已重新加载 .zshrc 配置文件。${NC}" || log "${YELLOW}未能重新加载 .zshrc，请手动执行 source ~/.zshrc。${NC}"
+  fi
   if [[ "$success" == false ]]; then
     log "${RED}Nexus CLI 安装/更新失败 $max_attempts 次，将尝试使用当前版本运行节点。${NC}"
   fi
