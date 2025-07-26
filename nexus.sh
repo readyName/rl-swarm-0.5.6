@@ -207,9 +207,15 @@ cleanup_exit() {
   fi
   # 查找 nexus-network 和 nexus-cli 进程
   log "${BLUE}正在查找 Nexus 进程...${NC}"
-  # 简化查找逻辑，只查找进程名
-  PIDS=$(pgrep -f "nexus-cli\|nexus-network" | tr '\n' ' ' | xargs echo -n)
-  log "${BLUE}pgrep 找到的进程: '$PIDS'${NC}"
+  # 使用 ps 命令替代 pgrep，更可靠
+  PIDS=$(ps aux | grep -E "nexus-cli|nexus-network" | grep -v grep | awk '{print $2}' | tr '\n' ' ' | xargs echo -n)
+  log "${BLUE}ps 找到的进程: '$PIDS'${NC}"
+  # 如果 ps 没找到，尝试 pgrep 作为备选
+  if [[ -z "$PIDS" ]]; then
+    log "${YELLOW}ps 未找到进程，尝试 pgrep...${NC}"
+    PIDS=$(pgrep -f "nexus-cli\|nexus-network" | tr '\n' ' ' | xargs echo -n)
+    log "${BLUE}pgrep 找到的进程: '$PIDS'${NC}"
+  fi
   if [[ -n "$PIDS" ]]; then
     for pid in $PIDS; do
       if ps -p "$pid" > /dev/null 2>&1; then
@@ -235,9 +241,15 @@ cleanup_restart() {
   fi
   # 查找 nexus-network 和 nexus-cli 进程
   log "${BLUE}正在查找 Nexus 进程...${NC}"
-  # 简化查找逻辑，只查找进程名
-  PIDS=$(pgrep -f "nexus-cli\|nexus-network" | tr '\n' ' ' | xargs echo -n)
-  log "${BLUE}pgrep 找到的进程: '$PIDS'${NC}"
+  # 使用 ps 命令替代 pgrep，更可靠
+  PIDS=$(ps aux | grep -E "nexus-cli|nexus-network" | grep -v grep | awk '{print $2}' | tr '\n' ' ' | xargs echo -n)
+  log "${BLUE}ps 找到的进程: '$PIDS'${NC}"
+  # 如果 ps 没找到，尝试 pgrep 作为备选
+  if [[ -z "$PIDS" ]]; then
+    log "${YELLOW}ps 未找到进程，尝试 pgrep...${NC}"
+    PIDS=$(pgrep -f "nexus-cli\|nexus-network" | tr '\n' ' ' | xargs echo -n)
+    log "${BLUE}pgrep 找到的进程: '$PIDS'${NC}"
+  fi
   if [[ -n "$PIDS" ]]; then
     for pid in $PIDS; do
       if ps -p "$pid" > /dev/null 2>&1; then
