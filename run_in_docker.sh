@@ -75,8 +75,8 @@ main() {
     start_docker
 
     # 进入目录
-    info "进入 rl-swarm-0.5.3 目录..."
-    cd ~/rl-swarm-0.5.3 || error "进入 rl-swarm-0.5.3 目录失败"
+    info "进入 rlswarm 目录..."
+    cd ~/rlswarm || error "进入 rlswarm 目录失败"
 
     # 运行容器
     info "🚀 运行 swarm-cpu 容器..."
