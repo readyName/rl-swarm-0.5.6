@@ -39,7 +39,6 @@ class SwarmGameManager(BaseGameManager, DefaultGameManagerMixin):
         log_dir: str = "logs",
         hf_token: str | None = None,
         hf_push_frequency: int = 20,
-        submit_frequency: int = 3,
         **kwargs,
     ):
 
@@ -80,7 +79,6 @@ class SwarmGameManager(BaseGameManager, DefaultGameManagerMixin):
         self.communication.step_ = (
             self.state.round
         )  # initialize communication module to contract's round
-        self.submit_frequency = submit_frequency
 
         # enable push to HF if token was provided
         self.hf_token = hf_token
@@ -106,6 +104,11 @@ class SwarmGameManager(BaseGameManager, DefaultGameManagerMixin):
         with open(os.path.join(log_dir, f"system_info.txt"), "w") as f:
             f.write(get_system_info())
 
+        self.batched_signals = 0.0
+        self.time_since_submit = time.time() #seconds
+        self.submit_period = 3.0 #hours
+        self.submitted_this_round = False
+
     def _get_total_rewards_by_agent(self):
         rewards_by_agent = defaultdict(int)
         for stage in range(self.state.stage):
@@ -119,68 +122,66 @@ class SwarmGameManager(BaseGameManager, DefaultGameManagerMixin):
 
         return rewards_by_agent
 
-    def _hook_after_rewards_updated(self):
-        # submit rewards and winners to the chain
-        if self.state.round % self.submit_frequency == 0:
-            rewards_by_agent = self._get_total_rewards_by_agent()
-            my_rewards = rewards_by_agent[self.peer_id]
-            my_rewards = (my_rewards + 1) * (my_rewards > 0) + my_rewards * (
-                my_rewards <= 0
-            )
-            self.coordinator.submit_reward(
-                self.state.round, 0, int(my_rewards), self.peer_id
-            )
+    def _get_my_rewards(self, signal_by_agent):
+        if len(signal_by_agent) == 0:
+            return 0
+        if self.peer_id in signal_by_agent:
+            my_signal = signal_by_agent[self.peer_id]
+        else:
+            my_signal = 0
+        my_signal = (my_signal + 1) * (my_signal > 0) + my_signal * (
+            my_signal <= 0
+        )
+        return my_signal
 
-            max_agent, max_rewards = max(rewards_by_agent.items(), key=lambda x: x[1])
-            self.coordinator.submit_winners(self.state.round, [max_agent], self.peer_id)
-        import gc
-        try:
-            gc.collect()
-            print("[内存释放成功] gc.collect() 执行完成")
-        except Exception as e:
-            print(f"[内存释放失败] gc.collect() 执行异常: {e}")
-        try:
-            import torch
-            if hasattr(torch, 'mps') and torch.backends.mps.is_available():
-                torch.mps.empty_cache()
-                print("[内存释放成功] torch.mps.empty_cache() 执行完成")
-        except Exception as e:
-            print(f"[内存释放失败] torch.mps.empty_cache() 执行异常: {e}")
+    def _try_submit_to_chain(self, signal_by_agent):
+        elapsed_time_hours = (time.time() - self.time_since_submit) / 3600
+        if elapsed_time_hours > self.submit_period:
+            try:
+                self.coordinator.submit_reward(
+                    self.state.round, 0, int(self.batched_signals), self.peer_id
+                )
+                self.batched_signals = 0.0
+                if len(signal_by_agent) > 0:
+                    max_agent, max_signal = max(signal_by_agent.items(), key=lambda x: x[1])
+                else: # if we have no signal_by_agents, just submit ourselves.
+                    max_agent = self.peer_id
+
+                self.coordinator.submit_winners(self.state.round, [max_agent], self.peer_id)
+                self.time_since_submit = time.time()
+                self.submitted_this_round = True
+            except Exception as e:
+                get_logger().exception(
+                    "Failed to submit to chain.\n"
+                    "This is most likely transient and will recover.\n"
+                    "There is no need to kill the program.\n"
+                    "If you encounter this error, please report it to Gensyn by\n"
+                    "filing a github issue here: https://github.com/gensyn-ai/rl-swarm/issues/ \n"
+                    "including the full stacktrace."
+                )
+
+
+    def _hook_after_rewards_updated(self):
+        signal_by_agent = self._get_total_rewards_by_agent()
+        self.batched_signals += self._get_my_rewards(signal_by_agent)
+        self._try_submit_to_chain(signal_by_agent)
 
     def _hook_after_round_advanced(self):
         self._save_to_hf()
 
+        # Try to submit to chain again if necessary, but don't update our signal twice
+        if not self.submitted_this_round:
+            signal_by_agent = self._get_total_rewards_by_agent()
+            self._try_submit_to_chain(signal_by_agent)
+        
+        # Reset flag for next round
+        self.submitted_this_round = False
+
         # Block until swarm round advances
         self.agent_block()
-        import gc
-        try:
-            gc.collect()
-            print("[内存释放成功] gc.collect() 执行完成")
-        except Exception as e:
-            print(f"[内存释放失败] gc.collect() 执行异常: {e}")
-        try:
-            import torch
-            if hasattr(torch, 'mps') and torch.backends.mps.is_available():
-                torch.mps.empty_cache()
-                print("[内存释放成功] torch.mps.empty_cache() 执行完成")
-        except Exception:
-            pass
 
     def _hook_after_game(self):
         self._save_to_hf()
-        import gc
-        try:
-            gc.collect()
-            print("[内存释放成功] gc.collect() 执行完成")
-        except Exception as e:
-            print(f"[内存释放失败] gc.collect() 执行异常: {e}")
-        try:
-            import torch
-            if hasattr(torch, 'mps') and torch.backends.mps.is_available():
-                torch.mps.empty_cache()
-                print("[内存释放成功] torch.mps.empty_cache() 执行完成")
-        except Exception:
-            pass
 
     def _save_to_hf(self):
         if (
