@@ -5,6 +5,9 @@ CONFIG_FILE="rgym_exp/config/rg-swarm.yaml"
 ZSHRC=~/.zshrc
 ENV_VAR="RL_SWARM_IP"
 
+# ----------- IP配置逻辑 -----------
+echo "🔧 检查IP配置..."
+
 # 读取 ~/.zshrc 的 RL_SWARM_IP 环境变量
 if grep -q "^export $ENV_VAR=" "$ZSHRC"; then
   CURRENT_IP=$(grep "^export $ENV_VAR=" "$ZSHRC" | tail -n1 | awk -F'=' '{print $2}' | tr -d '[:space:]')
@@ -55,7 +58,6 @@ else
   echo "✅ 已将 initial_peers 的 IP 全部替换为：$NEW_IP"
   echo "原始文件已备份为：${CONFIG_FILE}.bak"
 
-
   # 添加路由让该 IP 直连本地网关（不走 VPN）
   if [[ "$OSTYPE" == "darwin"* || "$OSTYPE" == "linux"* ]]; then
     GATEWAY=$(netstat -nr | grep '^default' | awk '{print $2}' | head -n1)
@@ -72,7 +74,7 @@ else
   fi
 fi
 
-
+# ----------- 原有逻辑继续 -----------
 
 # 切换到脚本所在目录（假设 go.sh 在项目根目录）
 cd "$(dirname "$0")"
