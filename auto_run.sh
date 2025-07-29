@@ -147,22 +147,21 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     fi
 
     if [ $PEERID_QUERY_TIMER -ge $PEERID_QUERY_INTERVAL ]; then
+      PEERID_QUERY_TIMER=0  # 重置计时器，避免持续输出日志
+      
       if [ -f "$PEERID_LOG" ]; then
         PEER_ID=$(grep "Peer ID" "$PEERID_LOG" | sed -n 's/.*Peer ID \[\(.*\)\].*/\1/p' | tail -n1)
         if [ -n "$PEER_ID" ]; then
           echo "$PEER_ID" > "$PEERID_FILE"
           log "✅ 已检测并保存 Peer ID: $PEER_ID"
+          query_and_save_peerid_info "$PEER_ID"
+          FIRST_QUERY_DONE=1
         else
-          log "⏳ 未检测到 Peer ID，本轮跳过参数和链上查询..."
-          continue
+          log "⏳ 未检测到 Peer ID，等待下次查询..."
         fi
       else
-        log "⏳ 未检测到 Peer ID 日志文件，本轮跳过参数和链上查询..."
-        continue
+        log "⏳ 未检测到 Peer ID 日志文件，等待下次查询..."
       fi
-      query_and_save_peerid_info "$PEER_ID"
-      FIRST_QUERY_DONE=1
-      PEERID_QUERY_TIMER=0
     fi
   done
 
