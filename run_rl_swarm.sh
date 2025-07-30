@@ -195,8 +195,8 @@ pip install gensyn-genrl==0.1.4 > /dev/null
 pip install reasoning-gym>=0.1.20 > /dev/null
 pip install trl > /dev/null
 pip install hivemind@git+https://github.com/gensyn-ai/hivemind@639c964a8019de63135a2594663b5bec8e5356dd > /dev/null
-~/rl-swarm/.venv/bin/pip install --force-reinstall transformers==4.51.3 trl==0.19.1
-
+pip install --force-reinstall transformers==4.51.3 trl==0.19.1
+pip freeze
 # 安装 web3，优先用本地whl文件
 if ls ./web3/web3-*.whl 1> /dev/null 2>&1; then
   echo_green ">> 检测到本地 web3 whl 文件，使用离线安装..."
