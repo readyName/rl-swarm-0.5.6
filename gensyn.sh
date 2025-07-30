@@ -57,19 +57,19 @@ else
 
 
   # 添加路由让该 IP 直连本地网关（不走 VPN）
-  if [[ "$OSTYPE" == "darwin"* || "$OSTYPE" == "linux"* ]]; then
-    GATEWAY=$(netstat -nr | grep '^default' | awk '{print $2}' | head -n1)
-    # 无论路由是否存在，都强制添加/覆盖
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-      # macOS
-      sudo route -n add -host $NEW_IP $GATEWAY 2>/dev/null || sudo route change -host $NEW_IP $GATEWAY 2>/dev/null
-      echo "🌐 已为 $NEW_IP 强制添加直连路由（不走 VPN），网关：$GATEWAY"
-    else
-      # Linux
-      sudo route add -host $NEW_IP $GATEWAY 2>/dev/null || sudo route change -host $NEW_IP $GATEWAY 2>/dev/null
-      echo "🌐 已为 $NEW_IP 强制添加直连路由（不走 VPN），网关：$GATEWAY"
-    fi
-  fi
+  # if [[ "$OSTYPE" == "darwin"* || "$OSTYPE" == "linux"* ]]; then
+  #   GATEWAY=$(netstat -nr | grep '^default' | awk '{print $2}' | head -n1)
+  #   # 无论路由是否存在，都强制添加/覆盖
+  #   if [[ "$OSTYPE" == "darwin"* ]]; then
+  #     # macOS
+  #     sudo route -n add -host $NEW_IP $GATEWAY 2>/dev/null || sudo route change -host $NEW_IP $GATEWAY 2>/dev/null
+  #     echo "🌐 已为 $NEW_IP 强制添加直连路由（不走 VPN），网关：$GATEWAY"
+  #   else
+  #     # Linux
+  #     sudo route add -host $NEW_IP $GATEWAY 2>/dev/null || sudo route change -host $NEW_IP $GATEWAY 2>/dev/null
+  #     echo "🌐 已为 $NEW_IP 强制添加直连路由（不走 VPN），网关：$GATEWAY"
+  #   fi
+  # fi
 fi
 
 
