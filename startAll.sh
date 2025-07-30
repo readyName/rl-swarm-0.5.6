@@ -82,7 +82,7 @@ until docker info >/dev/null 2>&1; do sleep 1; done
 sleep 30  # 额外等待确保完全启动
 
 # 4. 启动gensyn（上层左侧，向右偏移半个身位）
-osascript -e 'tell app "Terminal" to do script "until docker info >/dev/null 2>&1; do sleep 1; done && cd ~/rl-swarm && ./gensyn_cli.sh"'
+osascript -e 'tell app "Terminal" to do script "until docker info >/dev/null 2>&1; do sleep 1; done && cd ~/rl-swarm && ./gensyn.sh"'
 sleep 1
 arrange_window "gensyn" $((x1+upper_item_width/2)) $y1 $upper_item_width $upper_height
 
