@@ -83,8 +83,8 @@ if [ -d ".venv" ]; then
   source .venv/bin/activate
 else
   echo "⚠️ 未找到 .venv 虚拟环境，正在自动创建..."
-  if command -v python3.12 >/dev/null 2>&1; then
-    PYTHON=python3.12
+  if command -v python3.10 >/dev/null 2>&1; then
+    PYTHON=python3.10
   elif command -v python3 >/dev/null 2>&1; then
     PYTHON=python3
   else
