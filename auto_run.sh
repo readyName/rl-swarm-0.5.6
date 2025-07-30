@@ -96,11 +96,13 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   RL_PID=$!
 
   # ✅ 循环检测 Python 子进程初始化
-  sleep 300
+  sleep 600
   PY_PID=$(pgrep -P $RL_PID -f python | head -n 1)
 
   if [ -z "$PY_PID" ]; then
-    log "⚠️ 未找到 Python 子进程，将监控 RL_PID: $RL_PID 替代 PY_PID"
+    log "❌ 未找到 Python 子进程，程序异常退出"
+    cleanup restart
+    continue
   else
     log "✅ 检测到 Python 子进程，PID: $PY_PID"
   fi
@@ -110,7 +112,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   PEERID_FILE="peerid.txt"
   # 启动时不再主动检测和保存 PeerID，延后到定时任务中
 
-  # ✅ 监控进程（根据 PY_PID 是否存在选择 RL_PID 或 PY_PID）
+  # ✅ 监控进程（只监控 PY_PID）
   DISK_LIMIT_GB=20
   MEM_CHECK_INTERVAL=600
   MEM_CHECK_TIMER=0
@@ -118,14 +120,9 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   PEERID_QUERY_TIMER=0
   FIRST_QUERY_DONE=0
 
-  # 如果未找到 PY_PID，使用 RL_PID 进行监控
-  if [ -z "$PY_PID" ]; then
-    MONITOR_PID=$RL_PID
-    log "🔍 开始监控 RL_PID: $MONITOR_PID"
-  else
-    MONITOR_PID=$PY_PID
-    log "🔍 开始监控 PY_PID: $MONITOR_PID"
-  fi
+  # 只监控 PY_PID
+  MONITOR_PID=$PY_PID
+  log "🔍 开始监控 PY_PID: $MONITOR_PID"
 
   while kill -0 "$MONITOR_PID" >/dev/null 2>&1; do
     sleep 2
