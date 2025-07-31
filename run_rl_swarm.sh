@@ -201,11 +201,11 @@ else
     echo_green ">> 已从线上安装 gensyn-genrl"
 fi
 
-if [ -f "./deps/reasoning_gym-0.1.20-py3-none-any.whl" ]; then
-    pip install ./deps/reasoning_gym-0.1.20-py3-none-any.whl > /dev/null
+if [ -f "./deps/reasoning_gym-0.1.21-py3-none-any.whl" ]; then
+    pip install ./deps/reasoning_gym-0.1.21-py3-none-any.whl > /dev/null
     echo_green ">> 已从本地安装 reasoning-gym"
 else
-    pip install reasoning-gym==0.1.20 > /dev/null
+    pip install reasoning-gym==0.1.21 > /dev/null
     echo_green ">> 已从线上安装 reasoning-gym"
 fi
 
