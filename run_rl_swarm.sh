@@ -193,32 +193,32 @@ echo_green ">> Getting requirements..."
 pip install --upgrade pip > /dev/null
 
 # 优先本地安装
-if ls ./deps/gensyn_genrl-*.whl 1> /dev/null 2>&1; then
-    pip install ./deps/gensyn_genrl-*.whl > /dev/null
+if [ -f "./deps/gensyn_genrl-0.1.4-py3-none-any.whl" ]; then
+    pip install ./deps/gensyn_genrl-0.1.4-py3-none-any.whl > /dev/null
     echo_green ">> 已从本地安装 gensyn-genrl"
 else
     pip install gensyn-genrl==0.1.4 > /dev/null
     echo_green ">> 已从线上安装 gensyn-genrl"
 fi
 
-if ls ./deps/reasoning_gym-*.whl 1> /dev/null 2>&1; then
-    pip install ./deps/reasoning_gym-*.whl > /dev/null
+if [ -f "./deps/reasoning_gym-0.1.20-py3-none-any.whl" ]; then
+    pip install ./deps/reasoning_gym-0.1.20-py3-none-any.whl > /dev/null
     echo_green ">> 已从本地安装 reasoning-gym"
 else
     pip install reasoning-gym==0.1.20 > /dev/null
     echo_green ">> 已从线上安装 reasoning-gym"
 fi
 
-if ls ./deps/trl-*.whl 1> /dev/null 2>&1; then
-    pip install ./deps/trl-*.whl > /dev/null
+if [ -f "./deps/trl-0.19.1-py3-none-any.whl" ]; then
+    pip install ./deps/trl-0.19.1-py3-none-any.whl > /dev/null
     echo_green ">> 已从本地安装 trl"
 else
     pip install trl==0.19.1 > /dev/null
     echo_green ">> 已从线上安装 trl"
 fi
 
-if ls ./deps/transformers-*.whl 1> /dev/null 2>&1; then
-    pip install ./deps/transformers-*.whl > /dev/null
+if [ -f "./deps/transformers-4.51.3-py3-none-any.whl" ]; then
+    pip install ./deps/transformers-4.51.3-py3-none-any.whl > /dev/null
     echo_green ">> 已从本地安装 transformers"
 else
     pip install transformers==4.51.3 > /dev/null
