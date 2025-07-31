@@ -193,32 +193,32 @@ echo_green ">> Getting requirements..."
 pip install --upgrade pip > /dev/null
 
 # 优先本地安装
-if [ -f "~/rl-swarm/deps/gensyn_genrl-0.1.4-py3-none-any.whl" ]; then
-    pip install "~/rl-swarm/deps/gensyn_genrl-0.1.4-py3-none-any.whl" > /dev/null
+if ls ./deps/gensyn_genrl-*.whl 1> /dev/null 2>&1; then
+    pip install ./deps/gensyn_genrl-*.whl > /dev/null
     echo_green ">> 已从本地安装 gensyn-genrl"
 else
     pip install gensyn-genrl==0.1.4 > /dev/null
     echo_green ">> 已从线上安装 gensyn-genrl"
 fi
 
-if [ -f "~/rl-swarm/deps/reasoning_gym-0.1.20-py3-none-any.whl" ]; then
-    pip install "~/rl-swarm/deps/reasoning_gym-0.1.20-py3-none-any.whl" > /dev/null
+if ls ./deps/reasoning_gym-*.whl 1> /dev/null 2>&1; then
+    pip install ./deps/reasoning_gym-*.whl > /dev/null
     echo_green ">> 已从本地安装 reasoning-gym"
 else
     pip install reasoning-gym==0.1.20 > /dev/null
     echo_green ">> 已从线上安装 reasoning-gym"
 fi
 
-if [ -f "~/rl-swarm/deps/trl-0.19.1-py3-none-any.whl" ]; then
-    pip install "~/rl-swarm/deps/trl-0.19.1-py3-none-any.whl" > /dev/null
+if ls ./deps/trl-*.whl 1> /dev/null 2>&1; then
+    pip install ./deps/trl-*.whl > /dev/null
     echo_green ">> 已从本地安装 trl"
 else
     pip install trl==0.19.1 > /dev/null
     echo_green ">> 已从线上安装 trl"
 fi
 
-if [ -f "~/rl-swarm/deps/transformers-4.51.3-py3-none-any.whl" ]; then
-    pip install "~/rl-swarm/deps/transformers-4.51.3-py3-none-any.whl" > /dev/null
+if ls ./deps/transformers-*.whl 1> /dev/null 2>&1; then
+    pip install ./deps/transformers-*.whl > /dev/null
     echo_green ">> 已从本地安装 transformers"
 else
     pip install transformers==4.51.3 > /dev/null
@@ -226,8 +226,8 @@ else
 fi
 
 # hivemind源码优先本地
-if [ -d "~/rl-swarm/deps/hivemind" ]; then
-    pip install -e "~/rl-swarm/deps/hivemind" > /dev/null
+if [ -d "./deps/hivemind" ]; then
+    pip install -e ./deps/hivemind > /dev/null
     echo_green ">> 已从本地安装 hivemind"
 else
     pip install hivemind@git+https://github.com/gensyn-ai/hivemind@639c964a8019de63135a2594663b5bec8e5356dd > /dev/null
