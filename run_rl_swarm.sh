@@ -190,7 +190,7 @@ if [ "$CONNECT_TO_TESTNET" = true ]; then
 fi
 
 echo_green ">> Getting requirements..."
-pip install --upgrade pip > /dev/null
+#pip install --upgrade pip > /dev/null
 
 # 优先本地安装
 if [ -f "./deps/gensyn_genrl-0.1.4-py3-none-any.whl" ]; then
