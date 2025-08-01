@@ -194,54 +194,53 @@ pip install --upgrade pip > /dev/null
 
 # 优先本地安装
 if [ -f "./deps/gensyn_genrl-0.1.4-py3-none-any.whl" ]; then
-    pip install ./deps/gensyn_genrl-0.1.4-py3-none-any.whl > /dev/null
+    pip install ./deps/gensyn_genrl-0.1.4-py3-none-any.whl > /dev/null 2>&1
     echo_green ">> 已从本地安装 gensyn-genrl"
 else
-    pip install gensyn-genrl==0.1.4 > /dev/null
+    pip install gensyn-genrl==0.1.4 > /dev/null 2>&1
     echo_green ">> 已从线上安装 gensyn-genrl"
 fi
 
 if [ -f "./deps/reasoning_gym-0.1.21-py3-none-any.whl" ]; then
-    pip install ./deps/reasoning_gym-0.1.21-py3-none-any.whl > /dev/null
+    pip install ./deps/reasoning_gym-0.1.21-py3-none-any.whl > /dev/null 2>&1
     echo_green ">> 已从本地安装 reasoning-gym"
 else
-    pip install reasoning-gym==0.1.21 > /dev/null
+    pip install reasoning-gym==0.1.21 > /dev/null 2>&1
     echo_green ">> 已从线上安装 reasoning-gym"
 fi
 
 if [ -f "./deps/trl-0.19.1-py3-none-any.whl" ]; then
-    pip install ./deps/trl-0.19.1-py3-none-any.whl > /dev/null
+    pip install ./deps/trl-0.19.1-py3-none-any.whl > /dev/null 2>&1
     echo_green ">> 已从本地安装 trl"
 else
-    pip install trl==0.19.1 > /dev/null
+    pip install trl==0.19.1 > /dev/null 2>&1
     echo_green ">> 已从线上安装 trl"
 fi
 
 if [ -f "./deps/transformers-4.51.3-py3-none-any.whl" ]; then
-    pip install ./deps/transformers-4.51.3-py3-none-any.whl > /dev/null
+    pip install ./deps/transformers-4.51.3-py3-none-any.whl > /dev/null 2>&1
     echo_green ">> 已从本地安装 transformers"
 else
-    pip install transformers==4.51.3 > /dev/null
+    pip install transformers==4.51.3 > /dev/null 2>&1
     echo_green ">> 已从线上安装 transformers"
 fi
 
-# hivemind源码优先本地
-if [ -d "./deps/hivemind" ]; then
-    pip install -e ./deps/hivemind > /dev/null
-    echo_green ">> 已从本地安装 hivemind"
-else
-    pip install hivemind@git+https://github.com/gensyn-ai/hivemind@639c964a8019de63135a2594663b5bec8e5356dd > /dev/null
-    echo_green ">> 已从线上安装 hivemind"
-fi
+
+# hivemind直接从线上安装
+pip install hivemind@git+https://github.com/gensyn-ai/hivemind@639c964a8019de63135a2594663b5bec8e5356dd > /dev/null 2>&1
+echo_green ">> 已从线上安装 hivemind"
+
+
+
 
 
 # 安装 web3，优先用本地whl文件
 if ls ./web3/web3-*.whl 1> /dev/null 2>&1; then
   echo_green ">> 检测到本地 web3 whl 文件，使用离线安装..."
-  pip install --no-index --find-links=./web3 web3 > /dev/null
+  pip install --no-index --find-links=./web3 web3 > /dev/null 2>&1
 else
   echo_green ">> 未检测到本地 web3 whl 文件，使用在线安装..."
-  pip install web3 > /dev/null
+  pip install web3 > /dev/null 2>&1
 fi
 
 
