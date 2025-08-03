@@ -152,8 +152,8 @@ def send_via_api(org_id, method, args):
     url = MODAL_PROXY_URL + method
     payload = {"orgId": org_id} | args
 
-    # Send the POST request.
-    response = requests.post(url, json=payload)
+    # Send the POST request with timeout and retry.
+    response = requests.post(url, json=payload, timeout=30)
     response.raise_for_status()  # Raise an exception for HTTP errors
     return response.json()
 

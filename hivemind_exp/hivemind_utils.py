@@ -27,7 +27,7 @@ class HivemindNode:
     round_num: int = 0
     stage_num: int = 0
 
-    out_expiration: int = 60 * 60 * 4  # hours
+    out_expiration: int = 60 * 60 * 8  # 增加到8小时，减少网络请求
 
     @staticmethod
     def coordinator(*args, **kwargs):

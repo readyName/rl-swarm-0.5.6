@@ -46,7 +46,7 @@ def hash_keys(outputs):
     return result
 
 
-@lru_cache
+@lru_cache(maxsize=128)  # 增加缓存大小
 def get_outputs(
     dht: DHT, node_key: str, r, s, get_cached_fn=None
 ) -> dict[str, tuple[float, dict]]:  # Q: (timestamp, outputs)
